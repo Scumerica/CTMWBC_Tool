@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>CTM & WBC Timing Platform v1.9.1</title>
+<!-- ExcelJS: only used on-demand when generating the formatted Excel export (adds cell styling + embedded chart image support the built-in CSV export can't do) -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root {
     --bg-desktop: #0b1120;
@@ -1124,17 +1126,6 @@
       </div>
     </div>
 
-    <!-- Data Import/Export Menu -->
-    <div class="relative-menu-container">
-      <button class="btn btn-sm" onclick="toggleFileMenu(event)">💾 File / Data ▾</button>
-      <div class="flyout-menu" id="fileFlyout">
-        <div class="menu-action-item" onclick="exportData()">📤 Export Session JSON</div>
-        <label class="menu-action-item" style="margin:0; cursor:pointer;">
-          📥 Import Session JSON <input type="file" style="display:none;" onchange="importData(event)" accept=".json">
-        </label>
-      </div>
-    </div>
-
     <!-- Master Manage Lists Dropdown Menu -->
     <div class="relative-menu-container">
       <button class="btn btn-sm btn-primary" onclick="toggleManageListsMenu(event)">⚙️ Manage Lists ▾</button>
@@ -1152,6 +1143,14 @@
         <div class="menu-action-item" onclick="generateTestSampleData()">🧪 Test (10 Obs)</div>
         <div class="menu-action-item" onclick="openSettingsModal()">⚙️ Settings</div>
         <a class="menu-action-item" href="https://github.com/Scumerica/CTMWBC_Tool" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">🔗 View on GitHub</a>
+        <div style="border-top:1px solid #334155; margin:2px 0;"></div>
+        <div class="menu-action-item" onclick="openExportScopeModal('csv')">📄 Export CSV</div>
+        <div class="menu-action-item" onclick="openExportScopeModal('excel')">📊 Export Excel Report</div>
+        <div class="menu-action-item" onclick="exportData()">📤 Export Session JSON</div>
+        <label class="menu-action-item" style="margin:0; cursor:pointer;">
+          📥 Import Session JSON <input type="file" style="display:none;" onchange="importData(event)" accept=".json">
+        </label>
+        <div style="border-top:1px solid #334155; margin:2px 0;"></div>
         <div class="menu-action-item" style="color:var(--accent-red);" onclick="resetAllOfficesData()">⚠️ Reset All App Data</div>
       </div>
     </div>
@@ -1220,6 +1219,26 @@
       <button class="btn btn-sm" onclick="closeConfirmModal(false)">Cancel</button>
       <button class="btn btn-sm btn-danger" onclick="closeConfirmModal(true)">Confirm</button>
     </div>
+  </div>
+</div>
+
+<!-- Export Scope Picker -->
+<div class="modal-overlay" id="exportScopeModal" onclick="closeExportScopeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span id="exportScopeModalTitle">Export</span>
+      <button class="win-btn" onclick="closeExportScopeModal()">✕</button>
+    </div>
+    <div style="font-size:0.8rem; color:var(--text-muted);">Which data should this export include?</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button class="btn btn-primary" style="justify-content:flex-start; padding:10px 12px;" onclick="runExport('current')">
+        📍 Current Office &amp; Date — matches what's on screen now
+      </button>
+      <button class="btn" style="justify-content:flex-start; padding:10px 12px;" onclick="runExport('all')">
+        🗂️ Everything — all offices, all dates recorded so far
+      </button>
+    </div>
+    <div id="exportScopeStatus" style="font-size:0.78rem; color:var(--text-muted);"></div>
   </div>
 </div>
 
@@ -1798,10 +1817,6 @@
     toggleFlyout('snapFlyout', e);
   }
 
-  function toggleFileMenu(e) {
-    toggleFlyout('fileFlyout', e);
-  }
-
   function toggleToolsMenu(e) {
     toggleFlyout('toolsFlyout', e);
   }
@@ -1818,7 +1833,6 @@
 
   function closeAllFlyouts() {
     document.getElementById('snapFlyout').classList.remove('open');
-    document.getElementById('fileFlyout').classList.remove('open');
     document.getElementById('manageListsFlyout').classList.remove('open');
     document.getElementById('toolsFlyout').classList.remove('open');
   }
@@ -3332,15 +3346,351 @@
     });
   }
 
-  function exportData() {
-    closeAllFlyouts();
-    const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+  function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Texas_DPS_CTM_WBC_${new Date().toISOString().slice(0,10)}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function exportData() {
+    closeAllFlyouts();
+    const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, `Texas_DPS_CTM_WBC_${new Date().toISOString().slice(0,10)}.json`);
+  }
+
+  // --- CSV / Excel export ---
+  let pendingExportFormat = null;
+
+  function openExportScopeModal(format) {
+    closeAllFlyouts();
+    pendingExportFormat = format;
+    document.getElementById('exportScopeModalTitle').textContent = format === 'csv' ? '📄 Export CSV' : '📊 Export Excel Report';
+    document.getElementById('exportScopeStatus').textContent = '';
+    document.getElementById('exportScopeModal').classList.add('open');
+  }
+
+  function closeExportScopeModal() {
+    document.getElementById('exportScopeModal').classList.remove('open');
+    pendingExportFormat = null;
+  }
+
+  function runExport(scope) {
+    if (pendingExportFormat === 'csv') {
+      buildCsvExport(scope);
+    } else if (pendingExportFormat === 'excel') {
+      document.getElementById('exportScopeStatus').textContent = 'Building workbook…';
+      buildExcelExport(scope).catch(err => {
+        console.error('Excel export failed:', err);
+        document.getElementById('exportScopeStatus').textContent = 'Export failed — see browser console for details.';
+      });
+    }
+  }
+
+  // Pulls every observation in scope into a flat, office-grouped shape
+  // shared by both the CSV and Excel builders.
+  function gatherExportData(scope) {
+    const categories = [];
+    const seenCats = new Set();
+    const rowsByOffice = {};
+    const officeOrder = [];
+
+    function addCategoriesFrom(list) {
+      (list || []).forEach(c => { if (!seenCats.has(c)) { seenCats.add(c); categories.push(c); } });
+    }
+
+    function pushRow(officeName, obs, officeDate) {
+      if (!rowsByOffice[officeName]) { rowsByOffice[officeName] = []; officeOrder.push(officeName); }
+      const total = Object.values(obs.values || {}).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+      rowsByOffice[officeName].push({
+        date: obs.date || officeDate || '',
+        user: obs.user || '',
+        name: obs.name || '',
+        startTimeStr: obs.startTimeStr || '',
+        endTimeStr: obs.endTimeStr || '',
+        values: obs.values || {},
+        total: parseFloat(total.toFixed(2))
+      });
+    }
+
+    if (scope === 'current' && appState.activeOfficeId !== 'GARLAND_COMPARE_MODE') {
+      const office = getActiveOffice();
+      addCategoriesFrom(office.globalCategories);
+      getFilteredObservations().forEach(obs => pushRow(appState.activeOfficeId, obs, office.date));
+    } else {
+      // 'all' scope, or 'current' while sitting in Compare Mode (no single office to scope to)
+      Object.keys(appState.offices).forEach(officeName => {
+        const off = appState.offices[officeName];
+        if (!off) return;
+        addCategoriesFrom(off.globalCategories);
+        (off.observations || []).forEach(obs => pushRow(officeName, obs, off.date));
+      });
+    }
+
+    return { categories, officeOrder, rowsByOffice };
+  }
+
+  function computeCategoryStats(categories, obsRows) {
+    return categories.map(cat => {
+      let sum = 0, count = 0, min = Infinity, max = -Infinity;
+      obsRows.forEach(r => {
+        const v = r.values ? r.values[cat] : undefined;
+        if (typeof v === 'number' && v > 0) {
+          sum += v; count++;
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      });
+      const avg = count > 0 ? sum / count : 0;
+      return {
+        category: cat,
+        count,
+        min: count > 0 ? parseFloat(min.toFixed(1)) : 0,
+        avg: parseFloat(avg.toFixed(1)),
+        max: count > 0 ? parseFloat(max.toFixed(1)) : 0
+      };
+    });
+  }
+
+  function csvEscape(val) {
+    const s = (val === null || val === undefined) ? '' : String(val);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function buildCsvExport(scope) {
+    const data = gatherExportData(scope);
+    const header = ['Office', 'Date', 'Auditor', 'Subject', 'Start Time', 'End Time', ...data.categories, 'Total (s)'];
+    const lines = [header.map(csvEscape).join(',')];
+
+    data.officeOrder.forEach(officeName => {
+      data.rowsByOffice[officeName].forEach(r => {
+        const row = [
+          officeName, r.date, r.user, r.name, r.startTimeStr, r.endTimeStr,
+          ...data.categories.map(c => (typeof r.values[c] === 'number' ? r.values[c].toFixed(2) : '')),
+          r.total.toFixed(2)
+        ];
+        lines.push(row.map(csvEscape).join(','));
+      });
+    });
+
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    downloadBlob(blob, `Texas_DPS_CTM_WBC_Export_${scope}_${new Date().toISOString().slice(0, 10)}.csv`);
+    closeExportScopeModal();
+  }
+
+  // Renders a Min/Avg/Max grouped bar chart to a PNG data URL for embedding in the Excel report.
+  function renderCategoryStatsChartPNG(catStats, chartTitle) {
+    const W = 720, H = 320;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    const padding = { left: 55, right: 15, top: 40, bottom: 60 };
+    const plotW = W - padding.left - padding.right;
+    const plotH = H - padding.top - padding.bottom;
+
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(chartTitle, padding.left, 22);
+
+    const maxVal = Math.max(1, ...catStats.map(s => s.max));
+    const niceMax = maxVal * 1.15;
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top);
+    ctx.lineTo(padding.left, padding.top + plotH);
+    ctx.lineTo(padding.left + plotW, padding.top + plotH);
+    ctx.stroke();
+
+    ctx.font = '10px Arial';
+    for (let i = 0; i <= 4; i++) {
+      const v = (niceMax / 4) * i;
+      const y = padding.top + plotH - (v / niceMax) * plotH;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(padding.left + plotW, y); ctx.stroke();
+      ctx.fillStyle = '#64748b';
+      ctx.textAlign = 'right';
+      ctx.fillText(v.toFixed(0) + 's', padding.left - 6, y + 3);
+    }
+
+    const n = Math.max(1, catStats.length);
+    const groupW = plotW / n;
+    const barW = Math.min(18, groupW / 4);
+    const colors = { min: '#10b981', avg: '#3b82f6', max: '#ef4444' };
+
+    catStats.forEach((s, i) => {
+      const groupX = padding.left + i * groupW + groupW / 2;
+      ['min', 'avg', 'max'].forEach((k, j) => {
+        const val = s[k];
+        const barH = (val / niceMax) * plotH;
+        const x = groupX - barW * 1.5 + j * barW;
+        const y = padding.top + plotH - barH;
+        ctx.fillStyle = colors[k];
+        ctx.fillRect(x, y, barW - 2, Math.max(0, barH));
+      });
+      ctx.save();
+      ctx.translate(groupX, padding.top + plotH + 12);
+      ctx.rotate(-0.5);
+      ctx.fillStyle = '#334155';
+      ctx.font = '9px Arial';
+      ctx.textAlign = 'right';
+      const label = s.category.length > 14 ? s.category.slice(0, 13) + '…' : s.category;
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    });
+
+    let lx = padding.left;
+    const ly = 18;
+    ctx.font = '10px Arial';
+    [['Min', colors.min], ['Avg', colors.avg], ['Max', colors.max]].forEach(([label, color]) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(lx, ly - 8, 10, 10);
+      ctx.fillStyle = '#334155';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, lx + 14, ly);
+      lx += 55;
+    });
+
+    return canvas.toDataURL('image/png');
+  }
+
+  function excelThinBorder() {
+    const side = { style: 'thin', color: { argb: 'FFCBD5E1' } };
+    return { top: { ...side }, left: { ...side }, bottom: { ...side }, right: { ...side } };
+  }
+
+  function excelColLetter(n) {
+    let s = '';
+    while (n > 0) {
+      const rem = (n - 1) % 26;
+      s = String.fromCharCode(65 + rem) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
+  async function buildExcelExport(scope) {
+    if (typeof ExcelJS === 'undefined') {
+      document.getElementById('exportScopeStatus').textContent = 'Still loading the Excel engine — give it a second and try again.';
+      return;
+    }
+
+    const data = gatherExportData(scope);
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'CTM & WBC Timing Platform';
+    wb.created = new Date();
+
+    // ---- Data sheet ----
+    const dataSheet = wb.addWorksheet('Data');
+    const headerCols = ['Office', 'Date', 'Auditor', 'Subject', 'Start Time', 'End Time', ...data.categories, 'Total (s)'];
+    dataSheet.columns = headerCols.map((h, i) => ({ header: h, key: 'c' + i, width: i === 0 ? 22 : (i < 6 ? 13 : 14) }));
+
+    const headerRow = dataSheet.getRow(1);
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = excelThinBorder();
+    });
+    headerRow.height = 26;
+
+    let dataRowCount = 0;
+    data.officeOrder.forEach(officeName => {
+      data.rowsByOffice[officeName].forEach(r => {
+        dataRowCount++;
+        const row = dataSheet.addRow([
+          officeName, r.date, r.user, r.name, r.startTimeStr, r.endTimeStr,
+          ...data.categories.map(c => (typeof r.values[c] === 'number' ? r.values[c] : null)),
+          r.total
+        ]);
+        if (dataRowCount % 2 === 0) {
+          row.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; });
+        }
+        row.eachCell((cell, colNum) => {
+          cell.border = excelThinBorder();
+          if (colNum > 6) cell.numFmt = '0.00';
+        });
+      });
+    });
+
+    if (dataRowCount === 0) {
+      dataSheet.addRow(['No observations recorded for this scope.']);
+    }
+
+    dataSheet.autoFilter = { from: 'A1', to: `${excelColLetter(headerCols.length)}1` };
+    dataSheet.views = [{ state: 'frozen', xSplit: 4, ySplit: 1 }];
+
+    // ---- Summary sheet (per office: stats table + chart image) ----
+    const summarySheet = wb.addWorksheet('Summary');
+    summarySheet.getColumn(1).width = 26;
+    [2, 3, 4, 5].forEach(c => { summarySheet.getColumn(c).width = 13; });
+
+    let sRow = 1;
+    if (data.officeOrder.length === 0) {
+      summarySheet.getCell(1, 1).value = 'No observations recorded for this scope.';
+    }
+
+    data.officeOrder.forEach(officeName => {
+      const obsRows = data.rowsByOffice[officeName];
+      const catStats = computeCategoryStats(data.categories, obsRows);
+
+      summarySheet.mergeCells(sRow, 1, sRow, 5);
+      const titleCell = summarySheet.getCell(sRow, 1);
+      titleCell.value = officeName;
+      titleCell.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
+      titleCell.alignment = { vertical: 'middle', indent: 1 };
+      summarySheet.getRow(sRow).height = 22;
+      sRow++;
+
+      const hdr = ['Workflow Step', 'Observations', 'Min (s)', 'Avg (s)', 'Max (s)'];
+      const hdrRow = summarySheet.getRow(sRow);
+      hdr.forEach((h, i) => {
+        const cell = hdrRow.getCell(i + 1);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+        cell.border = excelThinBorder();
+        cell.alignment = { horizontal: 'center' };
+      });
+      sRow++;
+
+      catStats.forEach(s => {
+        const row = summarySheet.getRow(sRow);
+        row.getCell(1).value = s.category;
+        row.getCell(2).value = s.count;
+        row.getCell(3).value = s.min;
+        row.getCell(4).value = s.avg;
+        row.getCell(5).value = s.max;
+        row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+        row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCEAFE' } };
+        row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+        row.eachCell(cell => { cell.border = excelThinBorder(); });
+        sRow++;
+      });
+
+      sRow++;
+
+      const pngDataUrl = renderCategoryStatsChartPNG(catStats, officeName + ' — Min / Avg / Max by Step');
+      const imgId = wb.addImage({ base64: pngDataUrl, extension: 'png' });
+      summarySheet.addImage(imgId, { tl: { col: 0, row: sRow - 1 }, ext: { width: 620, height: 275 } });
+      sRow += 15;
+      sRow += 2;
+    });
+
+    document.getElementById('exportScopeStatus').textContent = 'Generating file…';
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    downloadBlob(blob, `Texas_DPS_CTM_WBC_Report_${scope}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    closeExportScopeModal();
   }
 
   function importData(e) {
