@@ -1379,6 +1379,16 @@
 </div>
 
 <script>
+  // Stop tap targets from taking browser focus. Mobile browsers scroll the page (including
+  // the outer host page, when embedded in an iframe) to keep a newly-focused element in view,
+  // and keep re-snapping to that position as long as focus holds — this is what makes the top
+  // ribbon appear to get "stuck" behind the hosting site's banner and bounce back when scrolled.
+  // preventDefault() on mousedown blocks the focus-on-tap without blocking the click itself.
+  document.addEventListener('mousedown', function (e) {
+    const target = e.target.closest('button, .btn, .win-toggle-btn, .office-tab, [role="button"]');
+    if (target) e.preventDefault();
+  }, true);
+
   const DEFAULT_CATEGORIES = [
     "Enter Door",
     "Speak to Greeter",
