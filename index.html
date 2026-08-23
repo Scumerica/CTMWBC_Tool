@@ -625,7 +625,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    flex-wrap: wrap;
     font-size: 0.7rem;
     color: var(--text-muted);
     width: 100%;
@@ -2887,6 +2886,9 @@
 
           <div class="timer-subtitle-row">
             <span>🕒 ${timer.startTimeStr || 'Not started'} · <span id="total-pill-${timer.id}">${formatTimeVal(timer.elapsed / 1000)}</span></span>
+          </div>
+          <div class="timer-subtitle-row">
+            <span>Target:</span>
             <select class="timer-target-inline-select" onchange="changeTimerStep('${timer.id}', ${timer.stepIndex}, this.value)">
               ${categoryOptions(activeStepName)}
             </select>
