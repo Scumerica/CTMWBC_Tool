@@ -419,10 +419,17 @@
     color: var(--text-muted);
     cursor: pointer;
     font-size: 0.85rem;
-    padding: 2px 6px;
+    padding: 4px 7px;
     border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .win-btn:hover { background: var(--bg-card-alt); color: #fff; }
+  .win-btn svg { display: block; }
+  .win-maximize-btn .icon-restore { display: none; }
+  .win-maximize-btn.is-maximized .icon-max { display: none; }
+  .win-maximize-btn.is-maximized .icon-restore { display: block; }
 
   .window-body {
     flex: 1;
@@ -451,8 +458,8 @@
   /* Flow Grid & Timer Card */
   .timers-flow-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
     align-items: start;
     width: 100%;
   }
@@ -461,10 +468,10 @@
     background-color: #111827;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 12px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     position: relative;
     width: 100%;
     max-width: 100%;
@@ -541,24 +548,44 @@
     white-space: nowrap;
   }
 
+  .timer-main-row {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+
   .timer-display {
     font-family: monospace;
-    font-size: 2rem;
+    font-size: 1.5rem;
     text-align: center;
     font-weight: bold;
     color: #38bdf8;
     background: #030712;
-    padding: 8px;
+    padding: 6px 4px;
     border-radius: 6px;
     border: 1px solid var(--border-color);
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .timer-display.tappable { cursor: pointer; }
+  .timer-display.tappable:active { opacity: 0.75; }
 
   .timer-actions {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr 1fr;
-    gap: 6px;
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 76px;
+    flex-shrink: 0;
+  }
+  .timer-actions .btn {
+    flex: 1;
+    padding: 3px 4px;
+    font-size: 0.7rem;
+    min-height: 0;
   }
   .current-step-box {
     background-color: var(--bg-card-alt);
@@ -672,6 +699,58 @@
   .btn-amber { background-color: var(--accent-amber); border-color: var(--accent-amber); color: #000; }
   .btn-purple { background-color: var(--accent-purple); border-color: var(--accent-purple); }
   .btn-sm { padding: 3px 6px; font-size: 0.75rem; }
+  .btn-xs { padding: 3px 6px; font-size: 0.8rem; line-height: 1; }
+
+  /* iOS-style toggle switch (device mode, settings) */
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    background: #334155;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .toggle-switch-knob {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .toggle-switch.on { background: var(--accent-blue); border-color: var(--accent-blue); }
+  .toggle-switch.on .toggle-switch-knob { transform: translateX(18px); }
+
+  .device-mode-switch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .device-mode-switch-wrap .active-side { color: #fff; }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 8px 2px;
+    border-bottom: 1px solid #334155;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-text { display: flex; flex-direction: column; gap: 3px; }
+  .settings-row-text strong { font-size: 0.85rem; }
+  .settings-row-text span { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; }
 
   /* Table */
   table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
@@ -915,7 +994,9 @@
   body.phone-mode .win-maximize-btn { display: none !important; }
   body.phone-mode .window-body { touch-action: pan-y; }
   body.phone-mode .timers-flow-grid { grid-template-columns: 1fr; }
-  body.phone-mode .timer-display { font-size: 1.6rem; }
+  body.phone-mode .timer-display { font-size: 1.15rem; padding: 4px 2px; }
+  body.phone-mode .timer-actions { width: 66px; }
+  body.phone-mode .timer-actions .btn { font-size: 0.65rem; padding: 2px 3px; }
   body.phone-mode .wbc-stage { min-width: 600px; }
 </style>
 </head>
@@ -933,12 +1014,15 @@
     </div>
   </div>
 
-  <div class="window-toggles" id="deviceModeToggle" title="Layout for your device">
-    <button class="win-toggle-btn" id="devicemode-btn-desktop" onclick="setDeviceMode('desktop')" title="Floating windows — best for iPad, desktop &amp; web">🖥️ iPad/Desktop</button>
-    <button class="win-toggle-btn" id="devicemode-btn-phone" onclick="setDeviceMode('phone')" title="Stacked single-column layout — best for phones, portrait or landscape">📱 Phone</button>
+  <div class="device-mode-switch-wrap" title="Layout for your device">
+    <span id="deviceModeLabelDesktop">🖥️ Desktop</span>
+    <button class="toggle-switch" id="deviceModeSwitch" role="switch" aria-checked="false" onclick="toggleDeviceMode()" title="Switch between floating-window (iPad/desktop) and stacked (phone) layout">
+      <span class="toggle-switch-knob"></span>
+    </button>
+    <span id="deviceModeLabelPhone">📱 Phone</span>
   </div>
 
-  <button class="btn btn-sm" onclick="toggleRibbon()" title="Hide the top ribbons to save screen space (handy in portrait)">🙈 Hide Ribbon</button>
+  <button class="btn btn-xs" onclick="toggleRibbon()" title="Hide the top ribbons to save screen space (handy in portrait)">🙈</button>
 
   <div class="window-toggles">
     <button class="win-toggle-btn active" id="btn-win-timers" onclick="toggleWindowVisible('win-timers')">⏱️ Timers</button>
@@ -947,9 +1031,6 @@
   </div>
   
   <div style="display: flex; gap: 8px; align-items: center;">
-    <!-- Global Auditor / User Switcher -->
-    <select class="styled-select" id="globalUserSelect" onchange="changeActiveUser(this.value)" title="Switch Auditor"></select>
-
     <!-- Layout Picker Menu -->
     <div class="relative-menu-container">
       <button class="btn btn-sm" onclick="toggleSnapMenu(event)">⊞ Layouts ▾</button>
@@ -1007,7 +1088,6 @@
         <label class="menu-action-item" style="margin:0; cursor:pointer;">
           📥 Import Session JSON <input type="file" style="display:none;" onchange="importData(event)" accept=".json">
         </label>
-        <div class="menu-action-item" style="color:var(--accent-red);" onclick="resetAllOfficesData()">⚠️ Reset All App Data</div>
       </div>
     </div>
 
@@ -1021,7 +1101,16 @@
       </div>
     </div>
 
-    <button class="btn btn-purple btn-sm" onclick="generateTestSampleData()">🧪 Test (10 Obs)</button>
+    <!-- Tools Dropdown Menu -->
+    <div class="relative-menu-container">
+      <button class="btn btn-sm btn-purple" onclick="toggleToolsMenu(event)">🔧 Tools ▾</button>
+      <div class="flyout-menu" id="toolsFlyout">
+        <div class="menu-action-item" onclick="generateTestSampleData()">🧪 Test (10 Obs)</div>
+        <div class="menu-action-item" onclick="openSettingsModal()">⚙️ Settings</div>
+        <a class="menu-action-item" href="https://github.com/Scumerica/CTMWBC_Tool" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">🔗 View on GitHub</a>
+        <div class="menu-action-item" style="color:var(--accent-red);" onclick="resetAllOfficesData()">⚠️ Reset All App Data</div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -1043,6 +1132,34 @@
     </div>
     <div class="modal-list-container" id="modalListContainer">
       <!-- Items rendered here -->
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal" onclick="closeSettingsModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span>⚙️ Settings</span>
+      <button class="win-btn" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <strong>Tap Timer to Lap</strong>
+        <span>Tapping/clicking the stopwatch display records a lap, same as pressing the Lap button.</span>
+      </div>
+      <button class="toggle-switch" id="settingTapToLapSwitch" role="switch" aria-checked="false" onclick="toggleSetting('tapToLap')">
+        <span class="toggle-switch-knob"></span>
+      </button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <strong>Last Lap Stops Timer</strong>
+        <span>While timing the final step, pressing Lap stops and completes the timer instead of adding another lap.</span>
+      </div>
+      <button class="toggle-switch" id="settingLastLapStopsSwitch" role="switch" aria-checked="false" onclick="toggleSetting('lastLapStops')">
+        <span class="toggle-switch-knob"></span>
+      </button>
     </div>
   </div>
 </div>
@@ -1072,8 +1189,13 @@
           <button class="win-sub-tab" id="subtab-completed" onclick="switchTimersSubTab('completed')">Completed</button>
         </div>
         <button class="btn btn-primary btn-sm" onclick="addTimerCard()" id="timersAddBtn">+ Add</button>
-        <button class="win-btn win-maximize-btn" id="max-btn-win-timers" onclick="toggleWindowMaximize('win-timers')" title="Maximize">🗖</button>
-        <button class="win-btn" onclick="toggleWindowVisible('win-timers')" title="Minimize">🗕</button>
+        <button class="win-btn win-maximize-btn" id="max-btn-win-timers" onclick="toggleWindowMaximize('win-timers')" title="Maximize">
+          <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="#0f172a" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="win-btn" onclick="toggleWindowVisible('win-timers')" title="Minimize">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
+        </button>
       </div>
     </div>
     <div class="window-body">
@@ -1102,8 +1224,13 @@
             <option value="both" selected>Both (s + m)</option>
           </select>
         </div>
-        <button class="win-btn win-maximize-btn" id="max-btn-win-ctm" onclick="toggleWindowMaximize('win-ctm')" title="Maximize">🗖</button>
-        <button class="win-btn" onclick="toggleWindowVisible('win-ctm')" title="Minimize">🗕</button>
+        <button class="win-btn win-maximize-btn" id="max-btn-win-ctm" onclick="toggleWindowMaximize('win-ctm')" title="Maximize">
+          <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="#0f172a" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="win-btn" onclick="toggleWindowVisible('win-ctm')" title="Minimize">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
+        </button>
       </div>
     </div>
     <div class="window-body">
@@ -1131,8 +1258,13 @@
             <option value="both" selected>Both (s + m)</option>
           </select>
         </div>
-        <button class="win-btn win-maximize-btn" id="max-btn-win-wbc" onclick="toggleWindowMaximize('win-wbc')" title="Maximize">🗖</button>
-        <button class="win-btn" onclick="toggleWindowVisible('win-wbc')" title="Minimize">🗕</button>
+        <button class="win-btn win-maximize-btn" id="max-btn-win-wbc" onclick="toggleWindowMaximize('win-wbc')" title="Maximize">
+          <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="#0f172a" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="win-btn" onclick="toggleWindowVisible('win-wbc')" title="Minimize">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
+        </button>
       </div>
     </div>
     <div class="window-body">
@@ -1212,7 +1344,8 @@
     openOfficeTabs: ["GARLAND_COMPARE_MODE"],
     offices: {},
     windowLayouts: {},
-    currentLayoutKey: 'dualSplit'
+    currentLayoutKey: 'dualSplit',
+    settings: { tapToLap: false, lastLapStops: false }
   };
 
   let highestZ = 25;
@@ -1492,6 +1625,12 @@
     const isCompare = (appState.activeOfficeId === 'GARLAND_COMPARE_MODE');
 
     let rightHtml = `<div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">`;
+    rightHtml += `
+      <div class="date-picker-wrap">
+        <span>👤</span>
+        <select class="styled-select" id="globalUserSelect" onchange="changeActiveUser(this.value)" title="Switch Auditor" style="background:transparent; border:none; padding:0;"></select>
+      </div>
+    `;
     if (isCompare) {
       rightHtml += `
         <span style="font-size:0.8rem; color:#a78bfa; font-weight:bold;">Multi-Office Comparison Mode</span>
@@ -1610,10 +1749,51 @@
     document.getElementById('fileFlyout').classList.toggle('open');
   }
 
+  function toggleToolsMenu(e) {
+    e.stopPropagation();
+    closeAllFlyouts();
+    document.getElementById('toolsFlyout').classList.toggle('open');
+  }
+
   function closeAllFlyouts() {
     document.getElementById('snapFlyout').classList.remove('open');
     document.getElementById('fileFlyout').classList.remove('open');
     document.getElementById('manageListsFlyout').classList.remove('open');
+    document.getElementById('toolsFlyout').classList.remove('open');
+  }
+
+  // --- Settings Modal ---
+  function openSettingsModal() {
+    closeAllFlyouts();
+    document.getElementById('settingsModal').classList.add('open');
+    applySettingsUI();
+  }
+
+  function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('open');
+  }
+
+  function applySettingsUI() {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false };
+    const s = appState.settings;
+    const tapSwitch = document.getElementById('settingTapToLapSwitch');
+    const lastSwitch = document.getElementById('settingLastLapStopsSwitch');
+    if (tapSwitch) {
+      tapSwitch.classList.toggle('on', !!s.tapToLap);
+      tapSwitch.setAttribute('aria-checked', !!s.tapToLap);
+    }
+    if (lastSwitch) {
+      lastSwitch.classList.toggle('on', !!s.lastLapStops);
+      lastSwitch.setAttribute('aria-checked', !!s.lastLapStops);
+    }
+  }
+
+  function toggleSetting(key) {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false };
+    appState.settings[key] = !appState.settings[key];
+    saveState();
+    applySettingsUI();
+    renderTimers();
   }
 
   function applyPresetLayout(layoutKey) {
@@ -1636,7 +1816,7 @@
       if (!win) return;
       win.classList.remove('maximized');
       const maxBtn = document.getElementById('max-btn-' + id);
-      if (maxBtn) maxBtn.innerText = '🗖';
+      if (maxBtn) maxBtn.classList.remove('is-maximized');
 
       if (show) {
         win.classList.remove('minimized');
@@ -1709,7 +1889,7 @@
         height: win.style.height
       };
       win.classList.add('maximized');
-      if (maxBtn) maxBtn.innerText = '🗗';
+      if (maxBtn) maxBtn.classList.add('is-maximized');
     } else {
       win.classList.remove('maximized');
       const geom = windowSavedGeometry[winId];
@@ -1719,7 +1899,7 @@
         win.style.width = geom.width;
         win.style.height = geom.height;
       }
-      if (maxBtn) maxBtn.innerText = '🗖';
+      if (maxBtn) maxBtn.classList.remove('is-maximized');
     }
     saveWindowState(winId);
   }
@@ -1927,7 +2107,7 @@
         }
         if (cfg.maximized) {
           win.classList.add('maximized');
-          if (maxBtn) maxBtn.innerText = '🗗';
+          if (maxBtn) maxBtn.classList.add('is-maximized');
         }
       }
     });
@@ -1946,14 +2126,24 @@
     applyDeviceMode();
   }
 
+  function toggleDeviceMode() {
+    const current = appState.deviceMode || 'desktop';
+    setDeviceMode(current === 'phone' ? 'desktop' : 'phone');
+  }
+
   function applyDeviceMode() {
     const mode = appState.deviceMode || 'desktop';
     document.body.classList.toggle('phone-mode', mode === 'phone');
 
-    const desktopBtn = document.getElementById('devicemode-btn-desktop');
-    const phoneBtn = document.getElementById('devicemode-btn-phone');
-    if (desktopBtn) desktopBtn.classList.toggle('active', mode !== 'phone');
-    if (phoneBtn) phoneBtn.classList.toggle('active', mode === 'phone');
+    const switchEl = document.getElementById('deviceModeSwitch');
+    if (switchEl) {
+      switchEl.classList.toggle('on', mode === 'phone');
+      switchEl.setAttribute('aria-checked', mode === 'phone');
+    }
+    const desktopLabel = document.getElementById('deviceModeLabelDesktop');
+    const phoneLabel = document.getElementById('deviceModeLabelPhone');
+    if (desktopLabel) desktopLabel.classList.toggle('active-side', mode !== 'phone');
+    if (phoneLabel) phoneLabel.classList.toggle('active-side', mode === 'phone');
 
     if (mode === 'phone') {
       // Timers are the priority on a phone — make sure they're visible, not minimized.
@@ -2003,6 +2193,7 @@
           appState.openOfficeTabs = ["GARLAND_COMPARE_MODE"];
           appState.activeOfficeId = "GARLAND_COMPARE_MODE";
         }
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false };
       } catch (e) {
         console.error("Local load failed", e);
         initDefaultApp();
@@ -2160,6 +2351,29 @@
     renderTimers();
   }
 
+  // Routes the Lap button (and tap-to-lap) to either record a lap, or — when
+  // "Last Lap Stops Timer" is enabled and this is the final step — stop the timer.
+  function handleLapButtonClick(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (!timer || !timer.running) return;
+
+    const finalStepName = office.globalCategories[office.globalCategories.length - 1] || "Exit Station";
+    const activeStepName = timer.steps[timer.stepIndex] || "Finished";
+    const isLastStep = (activeStepName === finalStepName) || (timer.stepIndex >= office.globalCategories.length - 1);
+
+    if (appState.settings && appState.settings.lastLapStops && isLastStep) {
+      stopTimer(id);
+    } else {
+      recordLap(id);
+    }
+  }
+
+  function handleStopwatchTap(id) {
+    if (!appState.settings || !appState.settings.tapToLap) return;
+    handleLapButtonClick(id);
+  }
+
   function recordLap(id) {
     const office = getActiveOffice();
     const timer = office.timers.find(t => String(t.id) === String(id));
@@ -2191,13 +2405,14 @@
     const timer = office.timers.find(t => String(t.id) === String(id));
     if (!timer) return;
 
-    const currentTotal = timer.running ? (performance.now() - timer.startTime) : timer.elapsed;
+    const wasRunning = timer.running;
+    const currentTotal = wasRunning ? (performance.now() - timer.startTime) : timer.elapsed;
     timer.running = false;
     timer.elapsed = currentTotal;
     timer.endTimeStr = getFormattedTimeOfDay();
 
     if (timer.recordedLaps.length < timer.steps.length && timer.lastLapTimestamp > 0) {
-      const remainingSec = (currentTotal - (timer.lastLapTimestamp - (timer.running ? timer.startTime : 0))) / 1000;
+      const remainingSec = (currentTotal - (timer.lastLapTimestamp - (wasRunning ? timer.startTime : 0))) / 1000;
       if (remainingSec > 0.1 && timer.steps[timer.stepIndex]) {
         timer.recordedLaps.push({
           stepName: timer.steps[timer.stepIndex],
@@ -2573,8 +2788,6 @@
             <span>🕒 Start: <strong>${timer.startTimeStr || 'Not Started'}</strong> (Date: ${timer.date})</span>
           </div>
 
-          <div class="timer-display" id="display-${timer.id}">${formatDuration(timer.elapsed)}</div>
-          
           <div class="current-step-box">
             <span>Target:</span>
             <select onchange="changeTimerStep('${timer.id}', ${timer.stepIndex}, this.value)" style="background:transparent; color:#38bdf8; font-weight:bold; border:none; outline:none;">
@@ -2582,16 +2795,19 @@
             </select>
           </div>
 
-          <div class="timer-actions">
-            <button class="btn ${timer.running ? 'btn-amber' : 'btn-success'}" onclick="toggleTimer('${timer.id}')">
-              ${timer.running ? 'Pause' : 'Start'}
-            </button>
-            <button class="btn btn-primary" onclick="recordLap('${timer.id}')" ${!timer.running ? 'disabled style="opacity:0.5"' : ''}>
-              ${isLastStep ? 'Add New Lap' : 'Lap'}
-            </button>
-            <button class="btn btn-danger" onclick="stopTimer('${timer.id}')">
-              Stop
-            </button>
+          <div class="timer-main-row">
+            <div class="timer-display ${appState.settings && appState.settings.tapToLap ? 'tappable' : ''}" id="display-${timer.id}" onclick="handleStopwatchTap('${timer.id}')" title="${appState.settings && appState.settings.tapToLap ? 'Tap to record a lap' : ''}">${formatDuration(timer.elapsed)}</div>
+            <div class="timer-actions">
+              <button class="btn ${timer.running ? 'btn-amber' : 'btn-success'}" onclick="toggleTimer('${timer.id}')">
+                ${timer.running ? 'Pause' : 'Start'}
+              </button>
+              <button class="btn ${(isLastStep && appState.settings && appState.settings.lastLapStops) ? 'btn-danger' : 'btn-primary'}" onclick="handleLapButtonClick('${timer.id}')" ${!timer.running ? 'disabled style="opacity:0.5"' : ''}>
+                ${isLastStep ? (appState.settings && appState.settings.lastLapStops ? 'Stop' : 'Add New Lap') : 'Lap'}
+              </button>
+              <button class="btn btn-danger" onclick="stopTimer('${timer.id}')">
+                Stop
+              </button>
+            </div>
           </div>
 
           <button class="details-toggle" onclick="toggleTimerDetails('${timer.id}')">
@@ -3051,11 +3267,13 @@
         appState = JSON.parse(event.target.result);
         if (!appState.unitMode) appState.unitMode = 'both';
         if (!appState.deviceMode) appState.deviceMode = detectDefaultDeviceMode();
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false };
         saveState();
         renderOfficeTabs();
         restoreWindowStates();
         applyDeviceMode();
         applyRibbonVisibility();
+        applySettingsUI();
         refreshAllPanels();
       } catch (err) {
         alert("Invalid file format.");
@@ -3077,6 +3295,7 @@
   restoreWindowStates();
   applyDeviceMode();
   applyRibbonVisibility();
+  applySettingsUI();
   refreshAllPanels();
 </script>
 </body>
