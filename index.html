@@ -1126,20 +1126,14 @@
       </div>
     </div>
 
-    <!-- Master Manage Lists Dropdown Menu -->
-    <div class="relative-menu-container">
-      <button class="btn btn-sm btn-primary" onclick="toggleManageListsMenu(event)">⚙️ Manage Lists ▾</button>
-      <div class="flyout-menu" id="manageListsFlyout">
-        <div class="menu-action-item" onclick="openManagerModal('offices')">🏢 Manage Offices</div>
-        <div class="menu-action-item" onclick="openManagerModal('steps')">📋 Manage Steps/Laps</div>
-        <div class="menu-action-item" onclick="openManagerModal('users')">👤 Manage Users</div>
-      </div>
-    </div>
-
     <!-- Tools Dropdown Menu -->
     <div class="relative-menu-container">
       <button class="btn btn-sm btn-purple" onclick="toggleToolsMenu(event)">🔧 Tools ▾</button>
       <div class="flyout-menu" id="toolsFlyout">
+        <div class="menu-action-item" onclick="openManagerModal('offices')">🏢 Manage Offices</div>
+        <div class="menu-action-item" onclick="openManagerModal('steps')">📋 Manage Steps/Laps</div>
+        <div class="menu-action-item" onclick="openManagerModal('users')">👤 Manage Users</div>
+        <div style="border-top:1px solid #334155; margin:2px 0;"></div>
         <div class="menu-action-item" onclick="generateTestSampleData()">🧪 Test (10 Obs)</div>
         <div class="menu-action-item" onclick="openSettingsModal()">⚙️ Settings</div>
         <a class="menu-action-item" href="https://github.com/Scumerica/CTMWBC_Tool" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">🔗 View on GitHub</a>
@@ -1495,10 +1489,6 @@
   }
 
   // --- Master Manage Lists Modal Logic ---
-  function toggleManageListsMenu(e) {
-    toggleFlyout('manageListsFlyout', e);
-  }
-
   function openManagerModal(type) {
     closeAllFlyouts();
     currentModalType = type;
@@ -1833,7 +1823,6 @@
 
   function closeAllFlyouts() {
     document.getElementById('snapFlyout').classList.remove('open');
-    document.getElementById('manageListsFlyout').classList.remove('open');
     document.getElementById('toolsFlyout').classList.remove('open');
   }
 
