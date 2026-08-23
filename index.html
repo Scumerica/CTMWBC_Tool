@@ -1477,9 +1477,7 @@
 
   // --- Master Manage Lists Modal Logic ---
   function toggleManageListsMenu(e) {
-    e.stopPropagation();
-    closeAllFlyouts();
-    document.getElementById('manageListsFlyout').classList.toggle('open');
+    toggleFlyout('manageListsFlyout', e);
   }
 
   function openManagerModal(type) {
@@ -1797,21 +1795,25 @@
 
   // Flyout Menus
   function toggleSnapMenu(e) {
-    e.stopPropagation();
-    closeAllFlyouts();
-    document.getElementById('snapFlyout').classList.toggle('open');
+    toggleFlyout('snapFlyout', e);
   }
 
   function toggleFileMenu(e) {
-    e.stopPropagation();
-    closeAllFlyouts();
-    document.getElementById('fileFlyout').classList.toggle('open');
+    toggleFlyout('fileFlyout', e);
   }
 
   function toggleToolsMenu(e) {
-    e.stopPropagation();
+    toggleFlyout('toolsFlyout', e);
+  }
+
+  // Opens the given flyout, closing any other open one first — and if the
+  // one clicked was already open, leaves everything closed (a real toggle).
+  function toggleFlyout(id, e) {
+    if (e) e.stopPropagation();
+    const el = document.getElementById(id);
+    const wasOpen = el.classList.contains('open');
     closeAllFlyouts();
-    document.getElementById('toolsFlyout').classList.toggle('open');
+    if (!wasOpen) el.classList.add('open');
   }
 
   function closeAllFlyouts() {
