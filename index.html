@@ -1164,6 +1164,21 @@
   </div>
 </div>
 
+<!-- Custom Confirm Modal — replaces native confirm(), which browsers can silently
+     suppress inside embedded/sandboxed iframes (e.g. some site-builder embeds). -->
+<div class="modal-overlay" id="confirmModal" onclick="closeConfirmModal(false)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span>⚠️ Confirm</span>
+    </div>
+    <div id="confirmModalMessage" style="font-size:0.9rem; line-height:1.4;"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn btn-sm" onclick="closeConfirmModal(false)">Cancel</button>
+      <button class="btn btn-sm btn-danger" onclick="closeConfirmModal(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- Desktop Workspace Area -->
 <div class="desktop-area" id="desktop" onclick="closeAllFlyouts()">
 
@@ -1794,6 +1809,22 @@
     saveState();
     applySettingsUI();
     renderTimers();
+  }
+
+  // --- Custom Confirm Modal (see markup comment for why this replaces window.confirm) ---
+  let pendingConfirmCallback = null;
+
+  function showConfirm(message, onConfirm) {
+    pendingConfirmCallback = onConfirm;
+    document.getElementById('confirmModalMessage').textContent = message;
+    document.getElementById('confirmModal').classList.add('open');
+  }
+
+  function closeConfirmModal(result) {
+    document.getElementById('confirmModal').classList.remove('open');
+    const cb = pendingConfirmCallback;
+    pendingConfirmCallback = null;
+    if (result && cb) cb();
   }
 
   function applyPresetLayout(layoutKey) {
@@ -2648,12 +2679,12 @@
 
   function deleteCompletedTimer(id) {
     const office = getActiveOffice();
-    if (confirm("Delete this completed timer and observation record?")) {
+    showConfirm("Delete this completed timer and observation record?", () => {
       if (office.completedTimers) office.completedTimers = office.completedTimers.filter(t => String(t.id) !== String(id));
       if (office.observations) office.observations = office.observations.filter(o => String(o.id) !== String(id));
       saveState();
       refreshAllPanels();
-    }
+    });
   }
 
   // Drag & Drop Laps
@@ -3072,20 +3103,20 @@
   function deleteObs(obsId) {
     if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
     const office = getActiveOffice();
-    if (confirm("Delete this observation from the data table?")) {
+    showConfirm("Delete this observation from the data table?", () => {
       if (office.observations) office.observations = office.observations.filter(o => String(o.id) !== String(obsId));
       if (office.completedTimers) office.completedTimers = office.completedTimers.filter(c => String(c.id) !== String(obsId));
       saveState();
       refreshAllPanels();
-    }
+    });
   }
 
   function resetActiveOfficeData() {
     if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
     const office = getActiveOffice();
     const targetDate = office.date || new Date().toISOString().slice(0, 10);
-    
-    if (confirm(`Reset all data for date ${targetDate} in "${appState.activeOfficeId}"?`)) {
+
+    showConfirm(`Reset all data for date ${targetDate} in "${appState.activeOfficeId}"?`, () => {
       if (office.observations) {
         office.observations = office.observations.filter(o => (o.date || targetDate) !== targetDate);
       }
@@ -3095,10 +3126,10 @@
       if (office.timers) {
         office.timers = office.timers.filter(t => (t.date || targetDate) !== targetDate);
       }
-      
+
       saveState();
       refreshAllPanels();
-    }
+    });
   }
 
   // WBC Graph with Filtering Support
@@ -3233,7 +3264,7 @@
   }
 
   function resetAllOfficesData() {
-    if (confirm("Reset and purge data for ALL Texas DPS offices?")) {
+    showConfirm("Reset and purge data for ALL Texas DPS offices?", () => {
       try {
         localStorage.removeItem('CTM_WBC_APP_DATA_V191');
       } catch (e) {
@@ -3243,7 +3274,7 @@
       saveState();
       renderOfficeTabs();
       refreshAllPanels();
-    }
+    });
   }
 
   function exportData() {
