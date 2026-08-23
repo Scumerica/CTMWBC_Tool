@@ -548,54 +548,98 @@
     white-space: nowrap;
   }
 
-  .timer-main-row {
+  /* Compact "native stopwatch" style — active timer card */
+  .timer-row-top {
     display: flex;
-    align-items: stretch;
+    align-items: center;
+    justify-content: space-between;
     gap: 6px;
     width: 100%;
   }
-
-  .timer-display {
-    font-family: monospace;
-    font-size: 1.5rem;
-    text-align: center;
-    font-weight: bold;
-    color: #38bdf8;
-    background: #030712;
-    padding: 6px 4px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
+  .timer-row-top .timer-name-input {
+    font-size: 0.82rem;
+    font-weight: 700;
+    width: auto;
     flex: 1;
     min-width: 0;
+  }
+  .timer-x-btn {
+    background: #334155;
+    border: none;
+    color: #cbd5e1;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-  .timer-display.tappable { cursor: pointer; }
-  .timer-display.tappable:active { opacity: 0.75; }
-
-  .timer-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    width: 76px;
+    font-size: 0.65rem;
+    cursor: pointer;
     flex-shrink: 0;
+    padding: 0;
   }
-  .timer-actions .btn {
-    flex: 1;
-    padding: 3px 4px;
-    font-size: 0.7rem;
-    min-height: 0;
-  }
-  .current-step-box {
-    background-color: var(--bg-card-alt);
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 0.8rem;
+  .timer-x-btn:hover { background: var(--accent-red); color: #fff; }
+
+  .timer-row-main {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 10px;
     width: 100%;
+  }
+  .timer-icon-cluster { display: flex; gap: 6px; flex-shrink: 0; }
+  .timer-icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .timer-icon-btn:disabled { opacity: 0.35; cursor: default; }
+  .timer-icon-btn.play { background: var(--accent-green); }
+  .timer-icon-btn.pause { background: var(--accent-amber); color: #000; }
+  .timer-icon-btn.lap { background: #334155; }
+  .timer-icon-btn.lap.is-stop-alias { background: var(--accent-red); }
+  .timer-icon-btn.stop { background: var(--accent-red); }
+
+  .timer-display-plain {
+    flex: 1;
+    min-width: 0;
+    font-family: monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #f8fafc;
+    text-align: right;
+    letter-spacing: 0.5px;
+  }
+  .timer-display-plain.tappable { cursor: pointer; }
+  .timer-display-plain.tappable:active { opacity: 0.7; }
+
+  .timer-subtitle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    width: 100%;
+  }
+  .timer-target-inline-select {
+    background: transparent;
+    color: #38bdf8;
+    border: none;
+    font-weight: 600;
+    font-size: 0.7rem;
+    outline: none;
+    cursor: pointer;
+    max-width: 55%;
+    text-align: right;
   }
 
   /* Lap Drawer & Drag Handle */
@@ -658,9 +702,11 @@
   }
   .lap-time-tag {
     font-weight: bold;
-    color: #10b981;
+    color: #f8fafc;
     font-size: 0.82rem;
   }
+  .lap-time-tag.lap-fastest { color: var(--accent-green); }
+  .lap-time-tag.lap-slowest { color: var(--accent-red); }
   .lap-tod-tag {
     font-size: 0.68rem;
     color: var(--text-muted);
@@ -994,9 +1040,8 @@
   body.phone-mode .win-maximize-btn { display: none !important; }
   body.phone-mode .window-body { touch-action: pan-y; }
   body.phone-mode .timers-flow-grid { grid-template-columns: 1fr; }
-  body.phone-mode .timer-display { font-size: 1.15rem; padding: 4px 2px; }
-  body.phone-mode .timer-actions { width: 66px; }
-  body.phone-mode .timer-actions .btn { font-size: 0.65rem; padding: 2px 3px; }
+  body.phone-mode .timer-display-plain { font-size: 1.6rem; }
+  body.phone-mode .timer-icon-btn { width: 34px; height: 34px; }
   body.phone-mode .wbc-stage { min-width: 600px; }
 </style>
 </head>
@@ -2569,7 +2614,7 @@
           const totalEl = document.getElementById(`total-pill-${timer.id}`);
           const currentTotal = performance.now() - timer.startTime;
           if (el) el.innerText = formatDuration(currentTotal);
-          if (totalEl) totalEl.innerText = `Total: ${formatTimeVal(currentTotal / 1000)}`;
+          if (totalEl) totalEl.innerText = formatTimeVal(currentTotal / 1000);
         }
       });
     }
@@ -2775,9 +2820,18 @@
         `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`
       ).join('');
 
+      const recordedDurations = timer.recordedLaps.map(l => l.duration).filter(d => d != null);
+      const minLapDur = recordedDurations.length > 1 ? Math.min(...recordedDurations) : null;
+      const maxLapDur = recordedDurations.length > 1 ? Math.max(...recordedDurations) : null;
+
       const stepsListHtml = timer.steps.map((step, sIdx) => {
         const recorded = timer.recordedLaps[sIdx];
         const isCurrent = sIdx === timer.stepIndex;
+        let lapTagClass = '';
+        if (recorded && minLapDur !== null) {
+          if (recorded.duration === minLapDur) lapTagClass = 'lap-fastest';
+          else if (recorded.duration === maxLapDur) lapTagClass = 'lap-slowest';
+        }
         return `
           <div class="lap-box"
                 draggable="true"
@@ -2794,7 +2848,7 @@
                 ${categoryOptions(step)}
               </select>
               <div class="lap-box-metrics">
-                <span class="lap-time-tag">${recorded ? formatTimeVal(recorded.duration) : (isCurrent ? 'Timing...' : '--')}</span>
+                <span class="lap-time-tag ${lapTagClass}">${recorded ? formatTimeVal(recorded.duration) : (isCurrent ? 'Timing...' : '--')}</span>
                 ${recorded && recorded.timeOfDay ? `<span class="lap-tod-tag">🕒 ${recorded.timeOfDay}</span>` : ''}
               </div>
               <button onclick="removeStepFromTimer('${timer.id}', ${sIdx})" style="background:none; border:none; color:var(--accent-red); cursor:pointer; margin-left:4px;">✕</button>
@@ -2803,47 +2857,44 @@
         `;
       }).join('');
 
+      const lastLapStopsOn = !!(appState.settings && appState.settings.lastLapStops);
+      const tapToLapOn = !!(appState.settings && appState.settings.tapToLap);
+      const lapIsStopAlias = isLastStep && lastLapStopsOn;
+
       return `
         <div class="timer-card">
-          <div class="timer-card-top-section">
-            <div class="timer-name-row">
-              <input class="timer-name-input" value="${timer.name}" oninput="updateTimerName('${timer.id}', this.value)" />
-            </div>
-            <div class="timer-total-badge" id="total-pill-${timer.id}">
-              Total: ${formatTimeVal(timer.elapsed / 1000)}
-            </div>
-            <button class="timer-close-btn" onclick="removeTimer('${timer.id}')">✕</button>
+          <div class="timer-row-top">
+            <input class="timer-name-input" value="${timer.name}" oninput="updateTimerName('${timer.id}', this.value)" />
+            <button class="timer-x-btn" onclick="removeTimer('${timer.id}')" title="Delete timer">✕</button>
           </div>
 
-          <div class="realtime-range-badge">
-            <span>🕒 Start: <strong>${timer.startTimeStr || 'Not Started'}</strong> (Date: ${timer.date})</span>
+          <div class="timer-row-main">
+            <div class="timer-icon-cluster">
+              <button class="timer-icon-btn ${timer.running ? 'pause' : 'play'}" onclick="toggleTimer('${timer.id}')" title="${timer.running ? 'Pause' : 'Start'}">
+                ${timer.running
+                  ? `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="2.5" width="3.2" height="11" rx="0.8"/><rect x="9.3" y="2.5" width="3.2" height="11" rx="0.8"/></svg>`
+                  : `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l10-5.5z"/></svg>`}
+              </button>
+              <button class="timer-icon-btn lap ${lapIsStopAlias ? 'is-stop-alias' : ''}" onclick="handleLapButtonClick('${timer.id}')" ${!timer.running ? 'disabled' : ''} title="${lapIsStopAlias ? 'Stop & Save (final step)' : 'Lap'}">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 1.5v13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3 2.2h7.4l-1.7 2 1.7 2H3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"/></svg>
+              </button>
+              <button class="timer-icon-btn stop" onclick="stopTimer('${timer.id}')" title="Stop &amp; Save">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg>
+              </button>
+            </div>
+            <div class="timer-display-plain ${tapToLapOn ? 'tappable' : ''}" id="display-${timer.id}" onclick="handleStopwatchTap('${timer.id}')" title="${tapToLapOn ? 'Tap to record a lap' : ''}">${formatDuration(timer.elapsed)}</div>
           </div>
 
-          <div class="current-step-box">
-            <span>Target:</span>
-            <select onchange="changeTimerStep('${timer.id}', ${timer.stepIndex}, this.value)" style="background:transparent; color:#38bdf8; font-weight:bold; border:none; outline:none;">
+          <div class="timer-subtitle-row">
+            <span>🕒 ${timer.startTimeStr || 'Not started'} · <span id="total-pill-${timer.id}">${formatTimeVal(timer.elapsed / 1000)}</span></span>
+            <select class="timer-target-inline-select" onchange="changeTimerStep('${timer.id}', ${timer.stepIndex}, this.value)">
               ${categoryOptions(activeStepName)}
             </select>
           </div>
 
-          <div class="timer-main-row">
-            <div class="timer-display ${appState.settings && appState.settings.tapToLap ? 'tappable' : ''}" id="display-${timer.id}" onclick="handleStopwatchTap('${timer.id}')" title="${appState.settings && appState.settings.tapToLap ? 'Tap to record a lap' : ''}">${formatDuration(timer.elapsed)}</div>
-            <div class="timer-actions">
-              <button class="btn ${timer.running ? 'btn-amber' : 'btn-success'}" onclick="toggleTimer('${timer.id}')">
-                ${timer.running ? 'Pause' : 'Start'}
-              </button>
-              <button class="btn ${(isLastStep && appState.settings && appState.settings.lastLapStops) ? 'btn-danger' : 'btn-primary'}" onclick="handleLapButtonClick('${timer.id}')" ${!timer.running ? 'disabled style="opacity:0.5"' : ''}>
-                ${isLastStep ? (appState.settings && appState.settings.lastLapStops ? 'Stop' : 'Add New Lap') : 'Lap'}
-              </button>
-              <button class="btn btn-danger" onclick="stopTimer('${timer.id}')">
-                Stop
-              </button>
-            </div>
-          </div>
-
           <button class="details-toggle" onclick="toggleTimerDetails('${timer.id}')">
-            <span>📋 Workflow Steps (${timer.steps.length})</span>
-            <span>${timer.expanded ? '▲ Hide' : '▼ Re-order & Details'}</span>
+            <span>Laps: ${timer.recordedLaps.length}</span>
+            <span>${timer.expanded ? '▲' : '▼'}</span>
           </button>
 
           ${timer.expanded ? `
