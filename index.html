@@ -1064,9 +1064,12 @@
 
   /* iOS auto-zooms the viewport when a focused input's font-size is under 16px, then re-snaps
      the scroll position while zoomed — on an embedded page that drags the fixed top ribbon out
-     from under the host site's own banner. Keeping every text field at 16px+ on phones stops the
-     zoom (and the ribbon jump that comes with it) at the source. */
-  @media (max-width: 768px) {
+     from under the host site's own banner. Keeping every text field at 16px+ stops the zoom (and
+     the ribbon jump that comes with it) at the source.
+     Gated on (pointer: coarse) — a touch-primary-input device — rather than a viewport max-width,
+     since this app is embedded in a Google Sites "whole page" iframe whose own rendered CSS width
+     (what a max-width query would measure) doesn't necessarily track the phone's physical width. */
+  @media (pointer: coarse) {
     input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
     select,
     textarea {
