@@ -1062,6 +1062,18 @@
   body.phone-mode .timer-icon-btn { width: 34px; height: 34px; }
   body.phone-mode .wbc-stage { min-width: 600px; }
 
+  /* iOS auto-zooms the viewport when a focused input's font-size is under 16px, then re-snaps
+     the scroll position while zoomed — on an embedded page that drags the fixed top ribbon out
+     from under the host site's own banner. Keeping every text field at 16px+ on phones stops the
+     zoom (and the ribbon jump that comes with it) at the source. */
+  @media (max-width: 768px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
   /* Ghost companion */
   @keyframes ghost-bob {
     0%, 100% { transform: translateY(0); }
