@@ -1075,12 +1075,15 @@
     height: 44px;
     z-index: 15000;
     display: none;
-    cursor: pointer;
+    cursor: grab;
     opacity: 0.88;
+    touch-action: none;
     transform: var(--ghost-anchor, none);
     transition: opacity 0.15s, transform 0.15s;
   }
   .ghost-float.visible { display: block; }
+  .ghost-float.dragging { cursor: grabbing; opacity: 1; transition: none; }
+  .ghost-float.dragging img { animation-play-state: paused; }
   .ghost-float img {
     width: 100%;
     height: 100%;
@@ -1090,8 +1093,9 @@
     pointer-events: none;
   }
   .ghost-float:hover { opacity: 1; transform: var(--ghost-anchor, none) scale(1.08); }
+  .ghost-float.dragging:hover { transform: none; }
 
-  /* Ghost position variants (4 corners + 4 edge-centers) */
+  /* Ghost position variants (4 corners + 4 edge-centers) — used for the picker's starting position */
   .ghost-float[data-pos="top-left"]      { top: 14px; left: 14px; right: auto; bottom: auto; }
   .ghost-float[data-pos="top-center"]    { top: 14px; left: 50%; right: auto; bottom: auto; --ghost-anchor: translateX(-50%); }
   .ghost-float[data-pos="top-right"]     { top: 14px; right: 14px; left: auto; bottom: auto; }
@@ -1100,11 +1104,16 @@
   .ghost-float[data-pos="bottom-left"]   { bottom: 14px; left: 14px; right: auto; top: auto; }
   .ghost-float[data-pos="bottom-center"] { bottom: 14px; left: 50%; right: auto; top: auto; --ghost-anchor: translateX(-50%); }
   .ghost-float[data-pos="bottom-right"]  { bottom: 14px; right: 14px; left: auto; top: auto; }
+  /* Freely dragged — exact px position set inline by JS, no anchor transform */
+  .ghost-float[data-pos="custom"]        { --ghost-anchor: none; }
 
+  /* Bubble placement (top/bottom/left/right + arrow position) is computed in JS via
+     positionGhostBubble() since the ghost can be dragged anywhere on screen — a fixed
+     CSS-only placement can't account for every possible spot. */
   .ghost-bubble {
     position: absolute;
     bottom: calc(100% + 10px);
-    right: 0;
+    left: 0;
     max-width: 190px;
     background: var(--bg-window);
     border: 1px solid var(--border-color);
@@ -1120,62 +1129,21 @@
     transition: opacity 0.15s, transform 0.15s;
   }
   .ghost-bubble.show { opacity: 1; transform: translateY(0); }
+  .ghost-bubble.below { transform: translateY(-4px); }
+  .ghost-bubble.below.show { transform: translateY(0); }
   .ghost-bubble::after {
     content: '';
     position: absolute;
-    top: 100%;
-    right: 14px;
+    left: var(--arrow-left, 14px);
     border: 6px solid transparent;
+    top: 100%;
     border-top-color: var(--border-color);
   }
-  /* Ghost sits in the top row or a middle-edge row — show the bubble below instead of above */
-  .ghost-float[data-pos="top-left"] .ghost-bubble,
-  .ghost-float[data-pos="top-center"] .ghost-bubble,
-  .ghost-float[data-pos="top-right"] .ghost-bubble,
-  .ghost-float[data-pos="middle-left"] .ghost-bubble,
-  .ghost-float[data-pos="middle-right"] .ghost-bubble {
-    bottom: auto;
-    top: calc(100% + 10px);
-  }
-  .ghost-float[data-pos="top-left"] .ghost-bubble::after,
-  .ghost-float[data-pos="top-center"] .ghost-bubble::after,
-  .ghost-float[data-pos="top-right"] .ghost-bubble::after,
-  .ghost-float[data-pos="middle-left"] .ghost-bubble::after,
-  .ghost-float[data-pos="middle-right"] .ghost-bubble::after {
+  .ghost-bubble.below::after {
     top: auto;
     bottom: 100%;
     border-top-color: transparent;
     border-bottom-color: var(--border-color);
-  }
-  /* Ghost sits on the left — bubble extends rightward instead of leftward */
-  .ghost-float[data-pos="top-left"] .ghost-bubble,
-  .ghost-float[data-pos="middle-left"] .ghost-bubble,
-  .ghost-float[data-pos="bottom-left"] .ghost-bubble {
-    right: auto;
-    left: 0;
-  }
-  .ghost-float[data-pos="top-left"] .ghost-bubble::after,
-  .ghost-float[data-pos="middle-left"] .ghost-bubble::after,
-  .ghost-float[data-pos="bottom-left"] .ghost-bubble::after {
-    right: auto;
-    left: 14px;
-  }
-  /* Ghost sits on a center edge — center the bubble too */
-  .ghost-float[data-pos="top-center"] .ghost-bubble,
-  .ghost-float[data-pos="bottom-center"] .ghost-bubble {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  .ghost-float[data-pos="top-center"] .ghost-bubble.show,
-  .ghost-float[data-pos="bottom-center"] .ghost-bubble.show {
-    transform: translateX(-50%) translateY(0);
-  }
-  .ghost-float[data-pos="top-center"] .ghost-bubble::after,
-  .ghost-float[data-pos="bottom-center"] .ghost-bubble::after {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
   }
 
   .ghost-pos-grid {
@@ -1417,7 +1385,7 @@
     </div>
     <div style="font-size:0.8rem; color:var(--text-muted);">Choose a little ghost to keep you company.</div>
     <div class="ghost-picker-grid" id="ghostPickerGrid"></div>
-    <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px solid var(--bg-card-alt); padding-top:10px;">Where should it hang out?</div>
+    <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px solid var(--bg-card-alt); padding-top:10px;">Starting position — you can also drag the ghost anywhere on screen afterward.</div>
     <div class="ghost-pos-grid" id="ghostPosGrid"></div>
   </div>
 </div>
@@ -1600,7 +1568,7 @@
 </div>
 
 <!-- Ghost Companion -->
-<div class="ghost-float" id="ghostFloat" onclick="showGhostComment(event)" title="Say hi">
+<div class="ghost-float" id="ghostFloat" onpointerdown="startGhostDrag(event)" onclick="showGhostComment(event)" title="Drag me, or tap for a kind word">
   <div class="ghost-bubble" id="ghostBubble"></div>
   <img id="ghostFloatImg" src="" alt="Ghost">
 </div>
@@ -1654,7 +1622,7 @@
     offices: {},
     windowLayouts: {},
     currentLayoutKey: 'dualSplit',
-    settings: { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' }
+    settings: { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null }
   };
 
   let highestZ = 25;
@@ -2075,7 +2043,7 @@
   }
 
   function applySettingsUI() {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
     const s = appState.settings;
     const tapSwitch = document.getElementById('settingTapToLapSwitch');
     const lastSwitch = document.getElementById('settingLastLapStopsSwitch');
@@ -2098,7 +2066,7 @@
   }
 
   function toggleSetting(key) {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
     appState.settings[key] = !appState.settings[key];
     saveState();
     applySettingsUI();
@@ -2238,7 +2206,7 @@
   }
 
   function toggleGhostSetting() {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
     appState.settings.showGhost = !appState.settings.showGhost;
     saveState();
     applySettingsUI();
@@ -2284,7 +2252,7 @@
   }
 
   function selectGhost(file) {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
     appState.settings.selectedGhost = file;
     saveState();
     renderGhostPicker();
@@ -2312,11 +2280,20 @@
   }
 
   function selectGhostPosition(pos) {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
     appState.settings.ghostPosition = pos;
+    appState.settings.ghostCustomPos = null;
     saveState();
     renderGhostPositionGrid();
     renderGhost();
+  }
+
+  function clampGhostPos(left, top) {
+    const w = 44, h = 44, margin = 2;
+    return {
+      left: Math.max(margin, Math.min(left, window.innerWidth - w - margin)),
+      top: Math.max(margin, Math.min(top, window.innerHeight - h - margin))
+    };
   }
 
   function renderGhost() {
@@ -2327,8 +2304,21 @@
     if (!float || !img) return;
     const show = !!s.showGhost && !!s.selectedGhost;
     float.classList.toggle('visible', show);
-    float.dataset.pos = s.ghostPosition || 'bottom-right';
     if (bubble) bubble.classList.remove('show');
+    if (s.ghostCustomPos) {
+      const p = clampGhostPos(s.ghostCustomPos.left, s.ghostCustomPos.top);
+      float.dataset.pos = 'custom';
+      float.style.left = p.left + 'px';
+      float.style.top = p.top + 'px';
+      float.style.right = 'auto';
+      float.style.bottom = 'auto';
+    } else {
+      float.dataset.pos = s.ghostPosition || 'bottom-right';
+      float.style.left = '';
+      float.style.top = '';
+      float.style.right = '';
+      float.style.bottom = '';
+    }
     if (show) {
       const name = ghostDisplayName(s.selectedGhost.replace(/\.png$/i, ''));
       img.src = 'ghosts/' + encodeURIComponent(s.selectedGhost);
@@ -2337,9 +2327,98 @@
     }
   }
 
+  window.addEventListener('resize', () => {
+    if (appState.settings && appState.settings.ghostCustomPos) renderGhost();
+  });
+
+  // --- Ghost dragging — free placement anywhere on screen ---
+  let ghostDragState = null;
+  let ghostJustDragged = false;
+
+  function startGhostDrag(e) {
+    const float = document.getElementById('ghostFloat');
+    if (!float || !float.classList.contains('visible')) return;
+    const rect = float.getBoundingClientRect();
+    ghostDragState = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origLeft: rect.left,
+      origTop: rect.top,
+      moved: false
+    };
+    window.addEventListener('pointermove', onGhostDrag);
+    window.addEventListener('pointerup', endGhostDrag);
+  }
+
+  function onGhostDrag(e) {
+    if (!ghostDragState) return;
+    const dx = e.clientX - ghostDragState.startX;
+    const dy = e.clientY - ghostDragState.startY;
+    const float = document.getElementById('ghostFloat');
+    if (!ghostDragState.moved) {
+      if (Math.hypot(dx, dy) < 4) return;
+      ghostDragState.moved = true;
+      float.classList.add('dragging');
+      const bubble = document.getElementById('ghostBubble');
+      if (bubble) bubble.classList.remove('show');
+    }
+    const p = clampGhostPos(ghostDragState.origLeft + dx, ghostDragState.origTop + dy);
+    float.dataset.pos = 'custom';
+    float.style.left = p.left + 'px';
+    float.style.top = p.top + 'px';
+    float.style.right = 'auto';
+    float.style.bottom = 'auto';
+  }
+
+  function endGhostDrag() {
+    window.removeEventListener('pointermove', onGhostDrag);
+    window.removeEventListener('pointerup', endGhostDrag);
+    if (!ghostDragState) return;
+    const float = document.getElementById('ghostFloat');
+    if (ghostDragState.moved) {
+      float.classList.remove('dragging');
+      const rect = float.getBoundingClientRect();
+      if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+      appState.settings.ghostCustomPos = { left: rect.left, top: rect.top };
+      saveState();
+      ghostJustDragged = true;
+      setTimeout(() => { ghostJustDragged = false; }, 0);
+    }
+    ghostDragState = null;
+  }
+
+  function positionGhostBubble() {
+    const float = document.getElementById('ghostFloat');
+    const bubble = document.getElementById('ghostBubble');
+    if (!float || !bubble) return;
+    const fRect = float.getBoundingClientRect();
+    const gap = 10, margin = 8;
+    const bw = bubble.offsetWidth;
+    const bh = bubble.offsetHeight;
+
+    const spaceAbove = fRect.top;
+    const spaceBelow = window.innerHeight - fRect.bottom;
+    const below = spaceAbove < (bh + gap + margin) && spaceBelow >= spaceAbove;
+    bubble.classList.toggle('below', below);
+    bubble.style.top = below ? (fRect.height + gap) + 'px' : 'auto';
+    bubble.style.bottom = below ? 'auto' : (fRect.height + gap) + 'px';
+
+    let bubbleViewportLeft = fRect.right - bw;
+    if (bubbleViewportLeft < margin) bubbleViewportLeft = fRect.left;
+    if (bubbleViewportLeft + bw > window.innerWidth - margin) bubbleViewportLeft = window.innerWidth - margin - bw;
+    bubbleViewportLeft = Math.max(margin, bubbleViewportLeft);
+    bubble.style.left = (bubbleViewportLeft - fRect.left) + 'px';
+
+    const floatCenterViewport = fRect.left + fRect.width / 2;
+    let arrowLeft = floatCenterViewport - bubbleViewportLeft;
+    arrowLeft = Math.max(10, Math.min(arrowLeft, bw - 10));
+    bubble.style.setProperty('--arrow-left', arrowLeft + 'px');
+  }
+
   let ghostBubbleTimer = null;
   function showGhostComment(e) {
     if (e) e.stopPropagation();
+    if (ghostJustDragged) return;
     const s = appState.settings || {};
     if (!s.selectedGhost) return;
     const bubble = document.getElementById('ghostBubble');
@@ -2353,6 +2432,7 @@
       msg = pool[Math.floor(Math.random() * pool.length)];
     }
     bubble.textContent = msg;
+    positionGhostBubble();
     bubble.classList.add('show');
     clearTimeout(ghostBubbleTimer);
     ghostBubbleTimer = setTimeout(() => bubble.classList.remove('show'), 4000);
@@ -2771,7 +2851,7 @@
           appState.openOfficeTabs = ["GARLAND_COMPARE_MODE"];
           appState.activeOfficeId = "GARLAND_COMPARE_MODE";
         }
-        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
         if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
         if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
       } catch (e) {
@@ -4185,7 +4265,7 @@
         appState = JSON.parse(event.target.result);
         if (!appState.unitMode) appState.unitMode = 'both';
         if (!appState.deviceMode) appState.deviceMode = detectDefaultDeviceMode();
-        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
         if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
         if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
         saveState();
