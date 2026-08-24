@@ -1060,6 +1060,7 @@
     display: none;
     cursor: pointer;
     opacity: 0.88;
+    transform: var(--ghost-anchor, none);
     transition: opacity 0.15s, transform 0.15s;
   }
   .ghost-float.visible { display: block; }
@@ -1071,7 +1072,18 @@
     animation: ghost-bob 3.2s ease-in-out infinite;
     pointer-events: none;
   }
-  .ghost-float:hover { opacity: 1; transform: scale(1.08); }
+  .ghost-float:hover { opacity: 1; transform: var(--ghost-anchor, none) scale(1.08); }
+
+  /* Ghost position variants (4 corners + 4 edge-centers) */
+  .ghost-float[data-pos="top-left"]      { top: 14px; left: 14px; right: auto; bottom: auto; }
+  .ghost-float[data-pos="top-center"]    { top: 14px; left: 50%; right: auto; bottom: auto; --ghost-anchor: translateX(-50%); }
+  .ghost-float[data-pos="top-right"]     { top: 14px; right: 14px; left: auto; bottom: auto; }
+  .ghost-float[data-pos="middle-left"]   { top: 50%; left: 14px; right: auto; bottom: auto; --ghost-anchor: translateY(-50%); }
+  .ghost-float[data-pos="middle-right"]  { top: 50%; right: 14px; left: auto; bottom: auto; --ghost-anchor: translateY(-50%); }
+  .ghost-float[data-pos="bottom-left"]   { bottom: 14px; left: 14px; right: auto; top: auto; }
+  .ghost-float[data-pos="bottom-center"] { bottom: 14px; left: 50%; right: auto; top: auto; --ghost-anchor: translateX(-50%); }
+  .ghost-float[data-pos="bottom-right"]  { bottom: 14px; right: 14px; left: auto; top: auto; }
+
   .ghost-bubble {
     position: absolute;
     bottom: calc(100% + 10px);
@@ -1099,6 +1111,93 @@
     border: 6px solid transparent;
     border-top-color: #475569;
   }
+  /* Ghost sits in the top row or a middle-edge row — show the bubble below instead of above */
+  .ghost-float[data-pos="top-left"] .ghost-bubble,
+  .ghost-float[data-pos="top-center"] .ghost-bubble,
+  .ghost-float[data-pos="top-right"] .ghost-bubble,
+  .ghost-float[data-pos="middle-left"] .ghost-bubble,
+  .ghost-float[data-pos="middle-right"] .ghost-bubble {
+    bottom: auto;
+    top: calc(100% + 10px);
+  }
+  .ghost-float[data-pos="top-left"] .ghost-bubble::after,
+  .ghost-float[data-pos="top-center"] .ghost-bubble::after,
+  .ghost-float[data-pos="top-right"] .ghost-bubble::after,
+  .ghost-float[data-pos="middle-left"] .ghost-bubble::after,
+  .ghost-float[data-pos="middle-right"] .ghost-bubble::after {
+    top: auto;
+    bottom: 100%;
+    border-top-color: transparent;
+    border-bottom-color: #475569;
+  }
+  /* Ghost sits on the left — bubble extends rightward instead of leftward */
+  .ghost-float[data-pos="top-left"] .ghost-bubble,
+  .ghost-float[data-pos="middle-left"] .ghost-bubble,
+  .ghost-float[data-pos="bottom-left"] .ghost-bubble {
+    right: auto;
+    left: 0;
+  }
+  .ghost-float[data-pos="top-left"] .ghost-bubble::after,
+  .ghost-float[data-pos="middle-left"] .ghost-bubble::after,
+  .ghost-float[data-pos="bottom-left"] .ghost-bubble::after {
+    right: auto;
+    left: 14px;
+  }
+  /* Ghost sits on a center edge — center the bubble too */
+  .ghost-float[data-pos="top-center"] .ghost-bubble,
+  .ghost-float[data-pos="bottom-center"] .ghost-bubble {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .ghost-float[data-pos="top-center"] .ghost-bubble.show,
+  .ghost-float[data-pos="bottom-center"] .ghost-bubble.show {
+    transform: translateX(-50%) translateY(0);
+  }
+  .ghost-float[data-pos="top-center"] .ghost-bubble::after,
+  .ghost-float[data-pos="bottom-center"] .ghost-bubble::after {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .ghost-pos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 36px);
+    grid-template-rows: repeat(3, 36px);
+    gap: 6px;
+    justify-content: center;
+    margin: 2px 0 4px;
+  }
+  .ghost-pos-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-card-alt);
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .ghost-pos-btn:hover { border-color: var(--accent-blue); }
+  .ghost-pos-btn.selected { border-color: var(--accent-green); }
+  .ghost-pos-btn .dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+  }
+  .ghost-pos-blank { visibility: hidden; }
+  .ghost-pos-btn[data-pos="top-left"] .dot { top: 4px; left: 4px; }
+  .ghost-pos-btn[data-pos="top-center"] .dot { top: 4px; left: 50%; transform: translateX(-50%); }
+  .ghost-pos-btn[data-pos="top-right"] .dot { top: 4px; right: 4px; }
+  .ghost-pos-btn[data-pos="middle-left"] .dot { top: 50%; left: 4px; transform: translateY(-50%); }
+  .ghost-pos-btn[data-pos="middle-right"] .dot { top: 50%; right: 4px; transform: translateY(-50%); }
+  .ghost-pos-btn[data-pos="bottom-left"] .dot { bottom: 4px; left: 4px; }
+  .ghost-pos-btn[data-pos="bottom-center"] .dot { bottom: 4px; left: 50%; transform: translateX(-50%); }
+  .ghost-pos-btn[data-pos="bottom-right"] .dot { bottom: 4px; right: 4px; }
+
   .ghost-picker-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1280,7 +1379,7 @@
     <div class="settings-row">
       <div class="settings-row-text">
         <strong>Show Ghost</strong>
-        <span>A small friendly ghost hangs out in the corner. Tap it for a kind word.</span>
+        <span>A small friendly ghost hangs out on screen. Tap it for a kind word.</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <button class="btn btn-sm" id="changeGhostBtn" style="display:none;" onclick="openGhostPicker()">Change</button>
@@ -1301,6 +1400,8 @@
     </div>
     <div style="font-size:0.8rem; color:var(--text-muted);">Choose a little ghost to keep you company.</div>
     <div class="ghost-picker-grid" id="ghostPickerGrid"></div>
+    <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px solid #334155; padding-top:10px;">Where should it hang out?</div>
+    <div class="ghost-pos-grid" id="ghostPosGrid"></div>
   </div>
 </div>
 
@@ -1536,7 +1637,7 @@
     offices: {},
     windowLayouts: {},
     currentLayoutKey: 'dualSplit',
-    settings: { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png' }
+    settings: { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' }
   };
 
   let highestZ = 25;
@@ -1957,7 +2058,7 @@
   }
 
   function applySettingsUI() {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
     const s = appState.settings;
     const tapSwitch = document.getElementById('settingTapToLapSwitch');
     const lastSwitch = document.getElementById('settingLastLapStopsSwitch');
@@ -1980,7 +2081,7 @@
   }
 
   function toggleSetting(key) {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
     appState.settings[key] = !appState.settings[key];
     saveState();
     applySettingsUI();
@@ -2120,7 +2221,7 @@
   }
 
   function toggleGhostSetting() {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
     appState.settings.showGhost = !appState.settings.showGhost;
     saveState();
     applySettingsUI();
@@ -2129,9 +2230,21 @@
     }
   }
 
+  const GHOST_POSITIONS = [
+    { id: 'top-left', label: 'Top Left' },
+    { id: 'top-center', label: 'Top Center' },
+    { id: 'top-right', label: 'Top Right' },
+    { id: 'middle-left', label: 'Middle Left' },
+    { id: 'middle-right', label: 'Middle Right' },
+    { id: 'bottom-left', label: 'Bottom Left' },
+    { id: 'bottom-center', label: 'Bottom Center' },
+    { id: 'bottom-right', label: 'Bottom Right' }
+  ];
+
   function openGhostPicker() {
     closeAllFlyouts();
     renderGhostPicker();
+    renderGhostPositionGrid();
     document.getElementById('ghostPickerModal').classList.add('open');
   }
 
@@ -2154,12 +2267,39 @@
   }
 
   function selectGhost(file) {
-    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png' };
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
     appState.settings.selectedGhost = file;
     saveState();
     renderGhostPicker();
     renderGhost();
     closeGhostPicker();
+  }
+
+  function renderGhostPositionGrid() {
+    const grid = document.getElementById('ghostPosGrid');
+    if (!grid) return;
+    const selected = (appState.settings && appState.settings.ghostPosition) || 'bottom-right';
+    const cells = [
+      'top-left', 'top-center', 'top-right',
+      'middle-left', null, 'middle-right',
+      'bottom-left', 'bottom-center', 'bottom-right'
+    ];
+    grid.innerHTML = cells.map(pos => {
+      if (!pos) return '<div class="ghost-pos-blank"></div>';
+      const entry = GHOST_POSITIONS.find(p => p.id === pos);
+      const sel = pos === selected ? ' selected' : '';
+      return `<button class="ghost-pos-btn${sel}" data-pos="${pos}" title="${entry.label}" onclick="selectGhostPosition('${pos}')">
+        <span class="dot"></span>
+      </button>`;
+    }).join('');
+  }
+
+  function selectGhostPosition(pos) {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
+    appState.settings.ghostPosition = pos;
+    saveState();
+    renderGhostPositionGrid();
+    renderGhost();
   }
 
   function renderGhost() {
@@ -2170,6 +2310,7 @@
     if (!float || !img) return;
     const show = !!s.showGhost && !!s.selectedGhost;
     float.classList.toggle('visible', show);
+    float.dataset.pos = s.ghostPosition || 'bottom-right';
     if (bubble) bubble.classList.remove('show');
     if (show) {
       const name = ghostDisplayName(s.selectedGhost.replace(/\.png$/i, ''));
@@ -2613,8 +2754,9 @@
           appState.openOfficeTabs = ["GARLAND_COMPARE_MODE"];
           appState.activeOfficeId = "GARLAND_COMPARE_MODE";
         }
-        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png' };
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
         if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
+        if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
       } catch (e) {
         console.error("Local load failed", e);
         initDefaultApp();
@@ -4026,8 +4168,9 @@
         appState = JSON.parse(event.target.result);
         if (!appState.unitMode) appState.unitMode = 'both';
         if (!appState.deviceMode) appState.deviceMode = detectDefaultDeviceMode();
-        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png' };
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right' };
         if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
+        if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
         saveState();
         renderOfficeTabs();
         restoreWindowStates();
