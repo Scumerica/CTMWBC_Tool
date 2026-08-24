@@ -1655,7 +1655,8 @@
       observations: [],
       timers: [],
       completedTimers: [],
-      compareOfficeSelections: [...DEFAULT_OFFICES]
+      compareOfficeSelections: [...DEFAULT_OFFICES],
+      compareOfficeDateRanges: {}
     };
   }
 
@@ -1991,22 +1992,35 @@
     const input = document.getElementById('modalNewItemInput');
     title.innerText = "📊 Select Offices to Compare";
     input.style.display = 'none';
+    renderCompareConfigList();
+    modal.classList.add('open');
+  }
 
+  function renderCompareConfigList() {
     const container = document.getElementById('modalListContainer');
     const office = getActiveOffice();
     if (!office.compareOfficeSelections) office.compareOfficeSelections = [...appState.officeDirectory];
+    if (!office.compareOfficeDateRanges) office.compareOfficeDateRanges = {};
 
     container.innerHTML = appState.officeDirectory.map(oName => {
       const isChecked = office.compareOfficeSelections.includes(oName);
+      const range = office.compareOfficeDateRanges[oName] || {};
       return `
-        <label style="display:flex; gap:8px; align-items:center; background:var(--bg-window-header); padding:8px 10px; border-radius:6px; cursor:pointer;">
-          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCompareOffice('${oName}', this.checked)" />
-          <span>🏢 ${oName}</span>
-        </label>
+        <div style="background:var(--bg-window-header); padding:8px 10px; border-radius:6px; display:flex; flex-direction:column; gap:6px;">
+          <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCompareOffice('${oName}', this.checked)" />
+            <span>🏢 ${oName}</span>
+          </label>
+          <div style="display:flex; gap:6px; align-items:center; padding-left:26px; ${isChecked ? '' : 'opacity:0.4;'}">
+            <span style="font-size:0.68rem; color:var(--text-muted); white-space:nowrap;">From</span>
+            <input type="date" ${isChecked ? '' : 'disabled'} value="${range.start || ''}" onchange="updateCompareOfficeRange('${oName}', 'start', this.value)" style="flex:1; min-width:0; font-size:0.75rem;" />
+            <span style="font-size:0.68rem; color:var(--text-muted); white-space:nowrap;">To</span>
+            <input type="date" ${isChecked ? '' : 'disabled'} value="${range.end || ''}" onchange="updateCompareOfficeRange('${oName}', 'end', this.value)" style="flex:1; min-width:0; font-size:0.75rem;" />
+            ${(range.start || range.end) ? `<button class="win-btn" title="Clear date range — include all dates for this office" onclick="clearCompareOfficeRange('${oName}')" style="flex-shrink:0;">✕</button>` : ''}
+          </div>
+        </div>
       `;
     }).join('');
-
-    modal.classList.add('open');
   }
 
   function toggleCompareOffice(oName, checked) {
@@ -2018,6 +2032,27 @@
       office.compareOfficeSelections = office.compareOfficeSelections.filter(n => n !== oName);
     }
     saveState();
+    renderCompareConfigList();
+    renderCTMTable();
+    renderWBC();
+  }
+
+  function updateCompareOfficeRange(oName, field, value) {
+    const office = getActiveOffice();
+    if (!office.compareOfficeDateRanges) office.compareOfficeDateRanges = {};
+    if (!office.compareOfficeDateRanges[oName]) office.compareOfficeDateRanges[oName] = { start: '', end: '' };
+    office.compareOfficeDateRanges[oName][field] = value;
+    saveState();
+    renderCompareConfigList();
+    renderCTMTable();
+    renderWBC();
+  }
+
+  function clearCompareOfficeRange(oName) {
+    const office = getActiveOffice();
+    if (office.compareOfficeDateRanges) delete office.compareOfficeDateRanges[oName];
+    saveState();
+    renderCompareConfigList();
     renderCTMTable();
     renderWBC();
   }
@@ -3601,12 +3636,20 @@
   // --- Filtering Helper for Single Office vs Multi-Office Comparison Mode ---
   function getFilteredObservations() {
     if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
-      const compareOfficeList = appState.offices['GARLAND_COMPARE_MODE']?.compareOfficeSelections || [...appState.officeDirectory];
+      const compareOffice = appState.offices['GARLAND_COMPARE_MODE'];
+      const compareOfficeList = compareOffice?.compareOfficeSelections || [...appState.officeDirectory];
+      const dateRanges = compareOffice?.compareOfficeDateRanges || {};
       let aggregatedObs = [];
       compareOfficeList.forEach(oName => {
         const off = appState.offices[oName];
         if (off && off.observations) {
+          const range = dateRanges[oName];
           off.observations.forEach(obs => {
+            const obsDate = obs.date || off.date;
+            if (range) {
+              if (range.start && obsDate < range.start) return;
+              if (range.end && obsDate > range.end) return;
+            }
             aggregatedObs.push({
               ...obs,
               name: `[${oName}] ${obs.name}`
