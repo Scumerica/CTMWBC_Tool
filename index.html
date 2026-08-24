@@ -8,22 +8,23 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root {
-    --bg-desktop: #0b1120;
-    --bg-window: #1e293b;
-    --bg-window-header: #0f172a;
-    --bg-card-alt: #334155;
-    --text-primary: #f8fafc;
-    --text-muted: #94a3b8;
-    --border-color: #475569;
-    --grid-line-color: rgba(71, 85, 105, 0.4);
-    --accent-blue: #3b82f6;
+    --bg-desktop: #02111B;
+    --bg-window: #30292F;
+    --bg-window-header: #02111B;
+    --bg-card-alt: #3F4045;
+    --text-primary: #FCFCFC;
+    --text-muted: #5D737E;
+    --border-color: #3F4045;
+    --grid-line-color: rgba(93, 115, 126, 0.35);
+    --accent-blue: #5D737E;
     --accent-green: #10b981;
     --accent-amber: #f59e0b;
     --accent-red: #ef4444;
-    --accent-purple: #8b5cf6;
+    --accent-purple: #5D737E;
     --tier-min: #10b981;
-    --tier-avg: #3b82f6;
+    --tier-avg: #5D737E;
     --tier-max: #ef4444;
+    --btn-shadow: 0 2px 6px rgba(2, 17, 27, 0.55);
     --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 
@@ -46,7 +47,7 @@
   /* Ribbon 1: Global App Ribbon */
   header {
     background-color: var(--bg-window-header);
-    border-bottom: 2px solid #3b82f6;
+    border-bottom: 2px solid var(--border-color);
     padding: 8px 14px;
     display: flex;
     justify-content: space-between;
@@ -57,7 +58,7 @@
     gap: 10px;
   }
   .app-title-group { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-  .app-title { font-size: 1.05rem; font-weight: 700; color: #60a5fa; }
+  .app-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
   .app-version { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; }
 
   .window-toggles { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -72,14 +73,15 @@
     cursor: pointer;
   }
   .win-toggle-btn.active {
-    background-color: var(--accent-blue);
-    border-color: var(--accent-blue);
-    color: #fff;
+    background-color: var(--bg-card-alt);
+    border-color: var(--bg-card-alt);
+    color: var(--text-primary);
+    box-shadow: var(--btn-shadow);
   }
 
   .styled-select {
-    background: #1e293b;
-    color: #38bdf8;
+    background: var(--bg-window);
+    color: var(--text-primary);
     border: 1px solid var(--border-color);
     padding: 4px 10px;
     border-radius: 6px;
@@ -88,13 +90,13 @@
     cursor: pointer;
     outline: none;
   }
-  .styled-select option { background: #0f172a; color: #fff; }
+  .styled-select option { background: var(--bg-window-header); color: var(--text-primary); }
 
   .unit-toggle-wrap {
     display: flex;
     align-items: center;
     gap: 4px;
-    background: #090d16;
+    background: var(--bg-desktop);
     padding: 2px 6px;
     border-radius: 4px;
     border: 1px solid var(--border-color);
@@ -103,7 +105,7 @@
   }
   .unit-toggle-select {
     background: transparent;
-    color: #38bdf8;
+    color: var(--text-primary);
     border: none;
     font-weight: bold;
     font-size: 0.72rem;
@@ -113,7 +115,7 @@
 
   /* Ribbon 2: Tab Local Ribbon */
   .office-nav-bar {
-    background: #090d16;
+    background: var(--bg-desktop);
     border-bottom: 1px solid var(--border-color);
     padding: 6px 14px;
     display: flex;
@@ -125,7 +127,7 @@
     z-index: 999;
   }
   .office-nav-bar::-webkit-scrollbar { height: 4px; }
-  .office-nav-bar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  .office-nav-bar::-webkit-scrollbar-thumb { background: var(--bg-card-alt); border-radius: 4px; }
 
   .tabs-scroll-area {
     display: flex;
@@ -134,8 +136,8 @@
     overflow-x: auto;
   }
   .office-tab {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
     color: var(--text-muted);
     padding: 6px 14px;
     border-radius: 6px;
@@ -147,22 +149,23 @@
     align-items: center;
     gap: 8px;
     transition: all 0.15s ease;
+    box-shadow: var(--btn-shadow);
   }
-  .office-tab:hover { background: #293548; color: #fff; }
+  .office-tab:hover { background: var(--bg-card-alt); color: var(--text-primary); }
   .office-tab.active {
-    background: #2563eb;
-    border-color: #3b82f6;
-    color: #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+    box-shadow: var(--btn-shadow);
   }
   .office-tab.static-compare-tab {
-    background: #7c3aed;
-    border-color: #8b5cf6;
-    color: #fff;
+    background: var(--bg-card-alt);
+    border-color: var(--text-muted);
+    color: var(--text-primary);
   }
   .office-tab .close-tab-btn {
     font-size: 0.75rem;
-    color: rgba(255,255,255,0.6);
+    color: rgba(252,252,252,0.6);
     border: none;
     background: none;
     cursor: pointer;
@@ -171,7 +174,7 @@
   .office-tab .close-tab-btn:hover { color: #ef4444; }
 
   .tab-add-btn {
-    background: #1e293b;
+    background: var(--bg-window);
     border: 1px dashed var(--border-color);
     color: var(--text-muted);
     padding: 6px 12px;
@@ -180,29 +183,30 @@
     font-weight: bold;
     cursor: pointer;
     transition: all 0.15s ease;
+    box-shadow: var(--btn-shadow);
   }
   .tab-add-btn:hover {
-    background: #2563eb;
-    border-color: #3b82f6;
-    color: #fff;
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
   }
 
   .date-picker-wrap {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
     padding: 3px 8px;
     border-radius: 6px;
     font-size: 0.8rem;
-    color: #38bdf8;
+    color: var(--text-primary);
     white-space: nowrap;
   }
   .date-picker-input {
     background: transparent;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.8rem;
     font-family: inherit;
     outline: none;
@@ -215,9 +219,9 @@
     position: absolute;
     top: 38px;
     right: 0;
-    background: #0f172a;
-    border: 1px solid #475569;
-    box-shadow: 0 14px 28px rgba(0,0,0,0.6);
+    background: var(--bg-window-header);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 14px 28px rgba(2,17,27,0.6);
     border-radius: 8px;
     padding: 8px;
     display: none;
@@ -236,9 +240,9 @@
   .flyout-menu.snap-grid.open { display: grid; }
 
   .menu-action-item {
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #fff;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 0.8rem;
@@ -248,12 +252,13 @@
     align-items: center;
     gap: 8px;
     text-align: left;
+    box-shadow: var(--btn-shadow);
   }
-  .menu-action-item:hover { background: #2563eb; }
+  .menu-action-item:hover { background: var(--accent-blue); }
 
   .snap-card {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     padding: 6px;
     cursor: pointer;
@@ -262,10 +267,11 @@
     align-items: center;
     gap: 6px;
     transition: all 0.15s ease;
+    box-shadow: var(--btn-shadow);
   }
   .snap-card:hover {
-    border-color: #60a5fa;
-    background: #253349;
+    border-color: var(--accent-blue);
+    background: var(--bg-card-alt);
     transform: translateY(-2px);
   }
   .snap-card-title {
@@ -277,15 +283,15 @@
   .snap-preview-box {
     width: 86px;
     height: 52px;
-    background: #090d16;
-    border: 1px solid #475569;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     display: grid;
     gap: 2px;
     padding: 2px;
   }
-  .snap-zone { background: #334155; border-radius: 2px; }
-  .snap-card:hover .snap-zone { background: #3b82f6; }
+  .snap-zone { background: var(--bg-card-alt); border-radius: 2px; }
+  .snap-card:hover .snap-zone { background: var(--accent-blue); }
 
   /* Modal Dialog for List Editing */
   .modal-overlay {
@@ -299,8 +305,8 @@
   }
   .modal-overlay.open { display: flex; }
   .modal-box {
-    background: #1e293b;
-    border: 1px solid #475569;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     width: 450px;
     max-width: 90vw;
@@ -395,7 +401,7 @@
   .window-tab-bar {
     display: flex;
     gap: 4px;
-    background: #090d16;
+    background: var(--bg-desktop);
     padding: 3px 6px;
     border-radius: 6px;
     border: 1px solid var(--border-color);
@@ -467,7 +473,7 @@
   }
 
   .timer-card {
-    background-color: #111827;
+    background-color: var(--bg-card-alt);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 8px;
@@ -503,12 +509,12 @@
     width: 100%;
   }
   .timer-total-badge {
-    background: #090d16;
+    background: var(--bg-desktop);
     border: 1px solid var(--border-color);
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 0.75rem;
-    color: #38bdf8;
+    color: var(--accent-blue);
     font-weight: bold;
     white-space: nowrap;
     text-align: center;
@@ -541,10 +547,10 @@
     justify-content: center;
     font-size: 0.72rem;
     color: var(--text-muted);
-    background: #090d16;
+    background: var(--bg-desktop);
     padding: 4px 8px;
     border-radius: 4px;
-    border: 1px solid #334155;
+    border: 1px solid var(--bg-card-alt);
     font-family: monospace;
     width: 100%;
     white-space: nowrap;
@@ -566,9 +572,9 @@
     min-width: 0;
   }
   .timer-x-btn {
-    background: #334155;
+    background: var(--bg-card-alt);
     border: none;
-    color: #cbd5e1;
+    color: var(--text-primary);
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -605,7 +611,7 @@
   .timer-icon-btn:disabled { opacity: 0.35; cursor: default; }
   .timer-icon-btn.play { background: var(--accent-green); }
   .timer-icon-btn.pause { background: var(--accent-amber); color: #000; }
-  .timer-icon-btn.lap { background: #334155; }
+  .timer-icon-btn.lap { background: var(--bg-card-alt); }
   .timer-icon-btn.lap.is-stop-alias { background: var(--accent-red); }
   .timer-icon-btn.stop { background: var(--accent-red); }
 
@@ -615,7 +621,7 @@
     font-family: monospace;
     font-size: 2rem;
     font-weight: 700;
-    color: #f8fafc;
+    color: var(--text-primary);
     text-align: right;
     letter-spacing: 0.5px;
   }
@@ -633,7 +639,7 @@
   }
   .timer-target-inline-select {
     background: transparent;
-    color: #38bdf8;
+    color: var(--accent-blue);
     border: none;
     font-weight: 600;
     font-size: 0.7rem;
@@ -670,10 +676,10 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    background: #0f172a;
+    background: var(--bg-window-header);
     padding: 8px 10px;
     border-radius: 6px;
-    border: 1px solid #334155;
+    border: 1px solid var(--bg-card-alt);
     width: 100%;
   }
   .lap-box-top {
@@ -683,7 +689,7 @@
     width: 100%;
   }
   .lap-box-top select {
-    background: #1e293b;
+    background: var(--bg-window);
     color: #fff;
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -703,7 +709,7 @@
   }
   .lap-time-tag {
     font-weight: bold;
-    color: #f8fafc;
+    color: var(--text-primary);
     font-size: 0.82rem;
   }
   .lap-time-tag.lap-fastest { color: var(--accent-green); }
@@ -728,7 +734,7 @@
   .btn {
     background-color: var(--bg-card-alt);
     border: 1px solid var(--border-color);
-    color: #fff;
+    color: var(--text-primary);
     padding: 5px 10px;
     border-radius: 6px;
     font-weight: 600;
@@ -738,7 +744,10 @@
     align-items: center;
     gap: 4px;
     justify-content: center;
+    box-shadow: var(--btn-shadow);
+    transition: filter 0.12s ease;
   }
+  .btn:hover { filter: brightness(1.15); }
   .btn:active { opacity: 0.8; }
   .btn-primary { background-color: var(--accent-blue); border-color: var(--accent-blue); }
   .btn-success { background-color: var(--accent-green); border-color: var(--accent-green); }
@@ -754,11 +763,12 @@
     width: 40px;
     height: 22px;
     border-radius: 999px;
-    background: #334155;
+    background: var(--bg-card-alt);
     border: 1px solid var(--border-color);
     cursor: pointer;
     padding: 0;
     flex-shrink: 0;
+    box-shadow: var(--btn-shadow);
     transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .toggle-switch-knob {
@@ -792,7 +802,7 @@
     justify-content: space-between;
     gap: 14px;
     padding: 8px 2px;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid var(--bg-card-alt);
   }
   .settings-row:last-child { border-bottom: none; }
   .settings-row-text { display: flex; flex-direction: column; gap: 3px; }
@@ -807,18 +817,18 @@
   .obs-header-box { display: flex; flex-direction: column; gap: 4px; }
   .obs-time-range-tag {
     font-size: 0.68rem;
-    color: #38bdf8;
+    color: var(--accent-blue);
     font-family: monospace;
     font-weight: normal;
-    background: #090d16;
+    background: var(--bg-desktop);
     padding: 2px 4px;
     border-radius: 4px;
-    border: 1px solid #334155;
+    border: 1px solid var(--bg-card-alt);
     white-space: nowrap;
     text-align: center;
   }
   .date-divider-th {
-    background: #1e293b;
+    background: var(--bg-window);
     color: #f59e0b;
     text-align: center;
     font-weight: bold;
@@ -928,7 +938,7 @@
     padding: 0 2px;
   }
   .tier-segment.max { background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%); }
-  .tier-segment.avg { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); }
+  .tier-segment.avg { background: linear-gradient(180deg, #5D737E 0%, #3F4045 100%); }
   .tier-segment.min { background: linear-gradient(180deg, #10b981 0%, #059669 100%); border-bottom: none; }
 
   .bar-label {
@@ -943,6 +953,22 @@
   }
 
   /* Collapsible top ribbons — reclaims vertical space, esp. in phone portrait */
+  .ribbon-toggle-btn {
+    background: var(--bg-card-alt);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: var(--btn-shadow);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: filter 0.12s ease;
+  }
+  .ribbon-toggle-btn:hover { color: var(--text-primary); filter: brightness(1.15); }
   .show-ribbon-tab {
     display: none;
     position: fixed;
@@ -950,18 +976,9 @@
     left: 50%;
     transform: translateX(-50%);
     z-index: 10001;
-    background: #0f172a;
-    border: 1px solid var(--border-color);
     border-top: none;
-    color: var(--text-muted);
-    font-size: 0.72rem;
-    font-weight: 600;
-    padding: 4px 14px;
     border-radius: 0 0 10px 10px;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   }
-  .show-ribbon-tab:hover { color: #fff; background: #1e293b; }
   body.ribbon-hidden .show-ribbon-tab { display: block; }
   body.ribbon-hidden header,
   body.ribbon-hidden .office-nav-bar {
@@ -1089,8 +1106,8 @@
     bottom: calc(100% + 10px);
     right: 0;
     max-width: 190px;
-    background: #1e293b;
-    border: 1px solid #475569;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
     color: #fff;
     font-size: 0.72rem;
     line-height: 1.35;
@@ -1109,7 +1126,7 @@
     top: 100%;
     right: 14px;
     border: 6px solid transparent;
-    border-top-color: #475569;
+    border-top-color: var(--border-color);
   }
   /* Ghost sits in the top row or a middle-edge row — show the bubble below instead of above */
   .ghost-float[data-pos="top-left"] .ghost-bubble,
@@ -1128,7 +1145,7 @@
     top: auto;
     bottom: 100%;
     border-top-color: transparent;
-    border-bottom-color: #475569;
+    border-bottom-color: var(--border-color);
   }
   /* Ghost sits on the left — bubble extends rightward instead of leftward */
   .ghost-float[data-pos="top-left"] .ghost-bubble,
@@ -1227,7 +1244,7 @@
 <body>
 
 <!-- Persistent tab to bring the ribbons back once hidden -->
-<button id="showRibbonTab" class="show-ribbon-tab" onclick="toggleRibbon()" title="Show top ribbon">☰ Show Ribbon</button>
+<button id="showRibbonTab" class="ribbon-toggle-btn show-ribbon-tab" onclick="toggleRibbon()" title="Show top ribbon">☰ Show Ribbon</button>
 
 <!-- RIBBON 1: GLOBAL APP RIBBON -->
 <header>
@@ -1246,7 +1263,7 @@
     <span id="deviceModeLabelPhone">📱 Phone</span>
   </div>
 
-  <button class="btn btn-xs" onclick="toggleRibbon()" title="Hide the top ribbons to save screen space (handy in portrait)">🙈</button>
+  <button class="ribbon-toggle-btn" onclick="toggleRibbon()" title="Hide the top ribbons to save screen space (handy in portrait)">🙈 Hide Ribbon</button>
 
   <div class="window-toggles">
     <button class="win-toggle-btn active" id="btn-win-timers" onclick="toggleWindowVisible('win-timers')">⏱️ Timers</button>
@@ -1261,7 +1278,7 @@
       <div class="flyout-menu snap-grid" id="snapFlyout">
         <div class="snap-card" onclick="applyPresetLayout('freeFloat')">
           <div class="snap-preview-box" style="display:flex; align-items:center; justify-content:center;">
-            <span style="font-size:1.1rem; color:#38bdf8;">✦</span>
+            <span style="font-size:1.1rem; color:var(--accent-blue);">✦</span>
           </div>
           <span class="snap-card-title">Free Move</span>
         </div>
@@ -1306,23 +1323,23 @@
 
     <!-- Tools Dropdown Menu -->
     <div class="relative-menu-container">
-      <button class="btn btn-sm btn-purple" onclick="toggleToolsMenu(event)">🔧 Tools ▾</button>
+      <button class="btn btn-sm" onclick="toggleToolsMenu(event)">🔧 Tools ▾</button>
       <div class="flyout-menu" id="toolsFlyout">
         <div class="menu-action-item" onclick="openManagerModal('offices')">🏢 Manage Offices</div>
         <div class="menu-action-item" onclick="openManagerModal('steps')">📋 Manage Steps/Laps</div>
         <div class="menu-action-item" onclick="openManagerModal('users')">👤 Manage Users</div>
-        <div style="border-top:1px solid #334155; margin:2px 0;"></div>
+        <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
         <div class="menu-action-item" onclick="generateTestSampleData()">🧪 Test (10 Obs)</div>
         <div class="menu-action-item" onclick="openSettingsModal()">⚙️ Settings</div>
         <a class="menu-action-item" href="https://github.com/Scumerica/CTMWBC_Tool" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">🔗 View on GitHub</a>
-        <div style="border-top:1px solid #334155; margin:2px 0;"></div>
+        <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
         <div class="menu-action-item" onclick="openExportScopeModal('csv')">📄 Export CSV</div>
         <div class="menu-action-item" onclick="openExportScopeModal('excel')">📊 Export Excel Report</div>
         <div class="menu-action-item" onclick="exportData()">📤 Export Session JSON</div>
         <label class="menu-action-item" style="margin:0; cursor:pointer;">
           📥 Import Session JSON <input type="file" style="display:none;" onchange="importData(event)" accept=".json">
         </label>
-        <div style="border-top:1px solid #334155; margin:2px 0;"></div>
+        <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
         <div class="menu-action-item" style="color:var(--accent-red);" onclick="resetAllOfficesData()">⚠️ Reset All App Data</div>
       </div>
     </div>
@@ -1400,7 +1417,7 @@
     </div>
     <div style="font-size:0.8rem; color:var(--text-muted);">Choose a little ghost to keep you company.</div>
     <div class="ghost-picker-grid" id="ghostPickerGrid"></div>
-    <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px solid #334155; padding-top:10px;">Where should it hang out?</div>
+    <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px solid var(--bg-card-alt); padding-top:10px;">Where should it hang out?</div>
     <div class="ghost-pos-grid" id="ghostPosGrid"></div>
   </div>
 </div>
@@ -1467,7 +1484,7 @@
         <button class="btn btn-primary btn-sm" onclick="addTimerCard()" id="timersAddBtn">+ Add</button>
         <button class="win-btn win-maximize-btn" id="max-btn-win-timers" onclick="toggleWindowMaximize('win-timers')" title="Maximize">
           <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
-          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="#0f172a" stroke="currentColor" stroke-width="1.5"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="var(--bg-window-header)" stroke="currentColor" stroke-width="1.5"/></svg>
         </button>
         <button class="win-btn" onclick="toggleWindowVisible('win-timers')" title="Minimize">
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
@@ -1502,7 +1519,7 @@
         </div>
         <button class="win-btn win-maximize-btn" id="max-btn-win-ctm" onclick="toggleWindowMaximize('win-ctm')" title="Maximize">
           <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
-          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="#0f172a" stroke="currentColor" stroke-width="1.5"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="var(--bg-window-header)" stroke="currentColor" stroke-width="1.5"/></svg>
         </button>
         <button class="win-btn" onclick="toggleWindowVisible('win-ctm')" title="Minimize">
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
@@ -1514,7 +1531,7 @@
         <table id="ctmTable">
           <thead id="ctmTableHead"></thead>
           <tbody id="ctmTableBody"></tbody>
-          <tfoot id="ctmTableFoot" style="background:#090d16; font-weight:bold; border-top:2px solid var(--border-color);"></tfoot>
+          <tfoot id="ctmTableFoot" style="background:var(--bg-desktop); font-weight:bold; border-top:2px solid var(--border-color);"></tfoot>
         </table>
       </div>
     </div>
@@ -1536,7 +1553,7 @@
         </div>
         <button class="win-btn win-maximize-btn" id="max-btn-win-wbc" onclick="toggleWindowMaximize('win-wbc')" title="Maximize">
           <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
-          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="#0f172a" stroke="currentColor" stroke-width="1.5"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="var(--bg-window-header)" stroke="currentColor" stroke-width="1.5"/></svg>
         </button>
         <button class="win-btn" onclick="toggleWindowVisible('win-wbc')" title="Minimize">
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
@@ -1572,7 +1589,7 @@
               </tr>
             </thead>
             <tbody id="wbcMetricsBody"></tbody>
-            <tfoot id="wbcMetricsFoot" style="background:#090d16; font-weight:bold; border-top:2px solid var(--border-color);"></tfoot>
+            <tfoot id="wbcMetricsFoot" style="background:var(--bg-desktop); font-weight:bold; border-top:2px solid var(--border-color);"></tfoot>
           </table>
         </div>
       </div>
@@ -1745,7 +1762,7 @@
     else if (currentModalType === 'users') listData = appState.userList;
 
     container.innerHTML = listData.map((item, idx) => `
-      <div style="display:flex; gap:6px; align-items:center; background:#0f172a; padding:6px 10px; border-radius:6px;">
+      <div style="display:flex; gap:6px; align-items:center; background:var(--bg-window-header); padding:6px 10px; border-radius:6px;">
         <span style="font-size:0.75rem; color:var(--text-muted); width:20px;">${idx + 1}.</span>
         <input type="text" value="${item}" onchange="modalEditItem(${idx}, this.value)" style="flex:1;" />
         <button class="btn btn-danger btn-sm" onclick="modalDeleteItem(${idx})">✕</button>
@@ -1919,7 +1936,7 @@
     `;
     if (isCompare) {
       rightHtml += `
-        <span style="font-size:0.8rem; color:#a78bfa; font-weight:bold;">Multi-Office Comparison Mode</span>
+        <span style="font-size:0.8rem; color:var(--accent-blue); font-weight:bold;">Multi-Office Comparison Mode</span>
         <button class="btn btn-sm btn-primary" onclick="openCompareConfigModal()">⚙️ Choose Offices to Compare</button>
       `;
     } else {
@@ -1999,7 +2016,7 @@
     container.innerHTML = appState.officeDirectory.map(oName => {
       const isChecked = office.compareOfficeSelections.includes(oName);
       return `
-        <label style="display:flex; gap:8px; align-items:center; background:#0f172a; padding:8px 10px; border-radius:6px; cursor:pointer;">
+        <label style="display:flex; gap:8px; align-items:center; background:var(--bg-window-header); padding:8px 10px; border-radius:6px; cursor:pointer;">
           <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCompareOffice('${oName}', this.checked)" />
           <span>🏢 ${oName}</span>
         </label>
@@ -3327,7 +3344,7 @@
                 ondragleave="handleLapDragLeave(event)"
                 ondrop="handleLapDrop(event, '${timer.id}', ${sIdx}, false)"
                 ondragend="handleDragEnd()"
-                style="${isCurrent ? 'border-left: 2px solid #38bdf8;' : ''}">
+                style="${isCurrent ? 'border-left: 2px solid var(--accent-blue);' : ''}">
             <div class="lap-box-top">
               <span class="drag-handle" title="Drag to reorder lap">⠿</span>
               <span style="color:var(--text-muted); font-size:0.72rem;">${sIdx + 1}.</span>
@@ -3390,9 +3407,9 @@
           ${timer.expanded ? `
             <div class="lap-list-drawer">
               ${stepsListHtml}
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:3px 6px; background:#090d16; border-radius:4px; font-size:0.72rem; font-weight:bold;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:3px 6px; background:var(--bg-desktop); border-radius:4px; font-size:0.72rem; font-weight:bold;">
                 <span style="color:var(--text-muted);">Recorded Total:</span>
-                <span style="color:#38bdf8;">${formatTimeVal(totalLapSeconds)}</span>
+                <span style="color:var(--accent-blue);">${formatTimeVal(totalLapSeconds)}</span>
               </div>
               <button class="btn btn-sm" style="margin-top:4px;" onclick="addStepToTimer('${timer.id}')">+ Insert Step</button>
             </div>
@@ -3474,7 +3491,7 @@
           ${comp.expanded ? `
             <div class="lap-list-drawer">
               ${stepsListHtml}
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:3px 6px; background:#090d16; border-radius:4px; font-size:0.72rem; font-weight:bold;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:3px 6px; background:var(--bg-desktop); border-radius:4px; font-size:0.72rem; font-weight:bold;">
                 <span style="color:var(--text-muted);">Adjusted Total:</span>
                 <span style="color:#10b981;">${formatTimeVal(totalSeconds)}</span>
               </div>
@@ -3553,7 +3570,7 @@
         <th style="min-width: 140px;">
           <div class="obs-header-box">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              ${isCompare ? `<span style="font-weight:bold; color:#60a5fa; font-size:0.8rem;">${obs.name}</span>` : `<input type="text" value="${obs.name}" oninput="updateObsName('${obs.id}', this.value)" />`}
+              ${isCompare ? `<span style="font-weight:bold; color:var(--accent-blue); font-size:0.8rem;">${obs.name}</span>` : `<input type="text" value="${obs.name}" oninput="updateObsName('${obs.id}', this.value)" />`}
               ${isCompare ? '' : `<button onclick="deleteObs('${obs.id}')" style="background:none; border:none; color:var(--accent-red); cursor:pointer; margin-left:4px;">✕</button>`}
             </div>
             ${timeTag}
@@ -3594,16 +3611,16 @@
 
       const avgSec = count > 0 ? (total / count) : 0;
       grandStepAverageSum += avgSec;
-      bodyHtml += `<td style="font-weight:bold; color:#38bdf8; white-space:nowrap;">${formatTimeVal(avgSec)}</td></tr>`;
+      bodyHtml += `<td style="font-weight:bold; color:var(--accent-blue); white-space:nowrap;">${formatTimeVal(avgSec)}</td></tr>`;
     });
 
     tbody.innerHTML = bodyHtml;
 
-    let footHtml = `<tr><td style="color:#60a5fa;">TOTAL CYCLE TIME</td>`;
+    let footHtml = `<tr><td style="color:var(--accent-blue);">TOTAL CYCLE TIME</td>`;
     filteredObs.forEach(obs => {
-      footHtml += `<td style="color:#60a5fa; font-weight:bold; white-space:nowrap;">${formatTimeVal(obsTotals[obs.id])}</td>`;
+      footHtml += `<td style="color:var(--accent-blue); font-weight:bold; white-space:nowrap;">${formatTimeVal(obsTotals[obs.id])}</td>`;
     });
-    footHtml += `<td style="color:#60a5fa; font-weight:bold; white-space:nowrap;">${formatTimeVal(grandStepAverageSum)}</td></tr>`;
+    footHtml += `<td style="color:var(--accent-blue); font-weight:bold; white-space:nowrap;">${formatTimeVal(grandStepAverageSum)}</td></tr>`;
     tfoot.innerHTML = footHtml;
   }
 
@@ -3749,7 +3766,7 @@
       if (stat.count === 0 || stat.max === 0) {
         return `
           <div class="bar-column">
-            <div class="stacked-pillar" style="height: 4px; background: #334155;"></div>
+            <div class="stacked-pillar" style="height: 4px; background: var(--bg-card-alt);"></div>
             <div class="bar-label">${stat.category}</div>
           </div>
         `;
@@ -3794,7 +3811,7 @@
 
     metricsFoot.innerHTML = `
       <tr>
-        <td style="color:#60a5fa;">TOTAL PROCESS CYCLE</td>
+        <td style="color:var(--accent-blue);">TOTAL PROCESS CYCLE</td>
         <td>${filteredObs.length} Obs</td>
         <td style="color:var(--tier-min); font-weight:bold; white-space:nowrap;">${formatTimeVal(totalMinSum)}</td>
         <td style="color:var(--tier-avg); font-weight:bold; white-space:nowrap;">${formatTimeVal(totalAvgSum)}</td>
