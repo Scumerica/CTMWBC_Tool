@@ -463,12 +463,13 @@
     font-size: 0.75rem;
   }
 
-  /* Flow Grid & Timer Card */
+  /* Flow Grid & Timer Card — a flex-wrap flow (not a strict grid) so each card can carry
+     its own width/height and dragging one to reorder still snaps the rest up tight beside it. */
   .timers-flow-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
-    align-items: start;
+    align-items: flex-start;
     width: 100%;
   }
 
@@ -481,10 +482,13 @@
     flex-direction: column;
     gap: 6px;
     position: relative;
-    width: 100%;
+    width: 280px;
     max-width: 100%;
+    flex-shrink: 0;
     overflow: hidden;
+    transition: box-shadow 0.15s;
   }
+  body.phone-mode .timer-card { width: 100% !important; height: auto !important; }
 
   .timer-card-top-section {
     display: flex;
@@ -585,6 +589,33 @@
     cursor: pointer;
     flex-shrink: 0;
     padding: 0;
+  }
+
+  .timer-size-select {
+    background: var(--bg-desktop);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.65rem;
+    padding: 2px 1px;
+    cursor: pointer;
+    flex-shrink: 0;
+    max-width: 46px;
+  }
+
+  .timer-notes-input {
+    width: 100%;
+    min-height: 56px;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    padding: 6px 8px;
+    resize: vertical;
+    outline: none;
   }
   .timer-x-btn:hover { background: var(--accent-red); color: #fff; }
 
@@ -1057,7 +1088,7 @@
   body.phone-mode .resize-handle { display: none !important; }
   body.phone-mode .win-maximize-btn { display: none !important; }
   body.phone-mode .window-body { touch-action: pan-y; }
-  body.phone-mode .timers-flow-grid { grid-template-columns: 1fr; }
+  body.phone-mode .timers-flow-grid { flex-direction: column; }
   body.phone-mode .timer-display-plain { font-size: 1.6rem; }
   body.phone-mode .timer-icon-btn { width: 34px; height: 34px; }
   body.phone-mode .wbc-stage { min-width: 600px; }
@@ -3030,7 +3061,11 @@
       lastLapTimestamp: 0,
       expanded: false,
       steps: [...office.globalCategories],
-      recordedLaps: []
+      recordedLaps: [],
+      notes: '',
+      notesExpanded: false,
+      cardWidth: null,
+      cardHeight: null
     };
     if (!office.timers) office.timers = [];
     office.timers.push(newTimer);
@@ -3159,7 +3194,8 @@
       elapsed: timer.elapsed,
       steps: [...timer.steps],
       recordedLaps: [...timer.recordedLaps],
-      expanded: false
+      expanded: false,
+      notes: timer.notes || ''
     });
 
     office.timers = office.timers.filter(t => String(t.id) !== String(timer.id));
@@ -3184,6 +3220,132 @@
       saveState();
       renderTimers();
     }
+  }
+
+  function toggleTimerNotes(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.notesExpanded = !timer.notesExpanded;
+      saveState();
+      renderTimers();
+    }
+  }
+
+  function updateTimerNotes(id, val) {
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.notes = val;
+      saveState();
+    }
+  }
+
+  // --- Timer Card Reordering (drag & drop) ---
+  function handleTimerCardDragStart(e, timerId) {
+    e.stopPropagation();
+    dragSrcType = 'TIMER_CARD';
+    dragSrcTimerId = String(timerId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.closest('.timer-card').classList.add('dragging');
+  }
+
+  function handleTimerCardDragOver(e, timerId) {
+    if (dragSrcType !== 'TIMER_CARD') return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (String(timerId) === dragSrcTimerId) return;
+    const card = e.target.closest('.timer-card');
+    if (card) card.classList.add('drag-over');
+  }
+
+  function handleTimerCardDragLeave(e) {
+    const card = e.target.closest('.timer-card');
+    if (card) card.classList.remove('drag-over');
+  }
+
+  function handleTimerCardDrop(e, targetTimerId) {
+    if (dragSrcType !== 'TIMER_CARD') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const card = e.target.closest('.timer-card');
+    if (card) card.classList.remove('drag-over');
+    if (dragSrcTimerId === String(targetTimerId)) return;
+
+    const office = getActiveOffice();
+    const list = office.timers;
+    if (!list) return;
+    const srcIdx = list.findIndex(t => String(t.id) === dragSrcTimerId);
+    const targetIdx = list.findIndex(t => String(t.id) === String(targetTimerId));
+    if (srcIdx === -1 || targetIdx === -1) return;
+
+    const moved = list.splice(srcIdx, 1)[0];
+    list.splice(targetIdx, 0, moved);
+    saveState();
+    renderTimers();
+  }
+
+  // --- Timer Card Resizing (manual drag + presets) ---
+  const TIMER_SIZE_PRESETS = {
+    small: { w: 220, h: null },
+    medium: { w: 300, h: null },
+    large: { w: 420, h: null }
+  };
+
+  function applyTimerSizePreset(id, key) {
+    const preset = TIMER_SIZE_PRESETS[key];
+    if (!preset) return;
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.cardWidth = preset.w;
+      timer.cardHeight = preset.h;
+      saveState();
+      renderTimers();
+    }
+  }
+
+  let activeResizeTimerId = null;
+  let timerResizeStartDims = { w: 0, h: 0, x: 0, y: 0 };
+
+  function startTimerCardResize(e, timerId) {
+    e.stopPropagation();
+    e.preventDefault();
+    const card = e.target.closest('.timer-card');
+    if (!card) return;
+    activeResizeTimerId = String(timerId);
+    timerResizeStartDims.w = card.offsetWidth;
+    timerResizeStartDims.h = card.offsetHeight;
+    timerResizeStartDims.x = e.clientX;
+    timerResizeStartDims.y = e.clientY;
+    window.addEventListener('pointermove', onTimerCardResize);
+    window.addEventListener('pointerup', endTimerCardResize);
+  }
+
+  function onTimerCardResize(e) {
+    if (!activeResizeTimerId) return;
+    const card = document.querySelector(`.timer-card[data-timer-id="${activeResizeTimerId}"]`);
+    if (!card) return;
+    const newWidth = Math.max(220, timerResizeStartDims.w + (e.clientX - timerResizeStartDims.x));
+    const newHeight = Math.max(160, timerResizeStartDims.h + (e.clientY - timerResizeStartDims.y));
+    card.style.width = newWidth + 'px';
+    card.style.height = newHeight + 'px';
+    card.style.overflowY = 'auto';
+  }
+
+  function endTimerCardResize() {
+    window.removeEventListener('pointermove', onTimerCardResize);
+    window.removeEventListener('pointerup', endTimerCardResize);
+    if (!activeResizeTimerId) return;
+    const card = document.querySelector(`.timer-card[data-timer-id="${activeResizeTimerId}"]`);
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === activeResizeTimerId);
+    if (timer && card) {
+      timer.cardWidth = card.offsetWidth;
+      timer.cardHeight = card.offsetHeight;
+      saveState();
+    }
+    activeResizeTimerId = null;
   }
 
   function changeTimerStep(timerId, stepIdx, newCategoryName) {
@@ -3347,7 +3509,11 @@
       lastLapTimestamp: 0,
       expanded: true,
       steps: [...comp.steps],
-      recordedLaps: [...comp.recordedLaps]
+      recordedLaps: [...comp.recordedLaps],
+      notes: comp.notes || '',
+      notesExpanded: false,
+      cardWidth: null,
+      cardHeight: null
     });
 
     office.completedTimers = office.completedTimers.filter(t => String(t.id) !== String(id));
@@ -3494,10 +3660,22 @@
       const tapToLapOn = !!(appState.settings && appState.settings.tapToLap);
       const lapIsStopAlias = isLastStep && lastLapStopsOn;
 
+      const cardSizeStyle = `width:${timer.cardWidth || 280}px;${timer.cardHeight ? ` height:${timer.cardHeight}px; overflow-y:auto;` : ''}`;
+
       return `
-        <div class="timer-card">
+        <div class="timer-card" data-timer-id="${timer.id}" style="${cardSizeStyle}"
+             ondragover="handleTimerCardDragOver(event, '${timer.id}')"
+             ondragleave="handleTimerCardDragLeave(event)"
+             ondrop="handleTimerCardDrop(event, '${timer.id}')">
           <div class="timer-row-top">
+            <span class="drag-handle" draggable="true" ondragstart="handleTimerCardDragStart(event, '${timer.id}')" ondragend="handleDragEnd()" title="Drag to reorder timer">⠿</span>
             <input class="timer-name-input" value="${timer.name}" oninput="updateTimerName('${timer.id}', this.value)" />
+            <select class="timer-size-select" onchange="applyTimerSizePreset('${timer.id}', this.value); this.value='';" title="Resize preset">
+              <option value="" selected disabled hidden>Size ▾</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
             <button class="timer-x-btn" onclick="removeTimer('${timer.id}')" title="Delete timer">✕</button>
           </div>
 
@@ -3528,6 +3706,14 @@
             </select>
           </div>
 
+          <button class="details-toggle" onclick="toggleTimerNotes('${timer.id}')">
+            <span>📝 Notes${timer.notes ? ' •' : ''}</span>
+            <span>${timer.notesExpanded ? '▲' : '▼'}</span>
+          </button>
+          ${timer.notesExpanded ? `
+            <textarea class="timer-notes-input" placeholder="Add notes about this subject/timer..." oninput="updateTimerNotes('${timer.id}', this.value)">${timer.notes || ''}</textarea>
+          ` : ''}
+
           <button class="details-toggle" onclick="toggleTimerDetails('${timer.id}')">
             <span>Laps: ${timer.recordedLaps.length}</span>
             <span>${timer.expanded ? '▲' : '▼'}</span>
@@ -3543,6 +3729,7 @@
               <button class="btn btn-sm" style="margin-top:4px;" onclick="addStepToTimer('${timer.id}')">+ Insert Step</button>
             </div>
           ` : ''}
+          <div class="resize-handle" onpointerdown="startTimerCardResize(event, '${timer.id}')" title="Resize">◢</div>
         </div>
       `;
     }).join('');
@@ -3609,7 +3796,8 @@
           <div class="realtime-range-badge">
             <span>📅 ${comp.date || office.date} | 🕒 ${comp.startTimeStr || '--'} → ${comp.endTimeStr || '--'}</span>
           </div>
-          
+          ${comp.notes ? `<div style="font-size:0.72rem; color:var(--text-muted); background:var(--bg-desktop); border-radius:6px; padding:6px 8px; line-height:1.35;">📝 ${comp.notes}</div>` : ''}
+
           <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
             <button class="btn btn-primary btn-sm" style="flex:1;" onclick="reopenCompletedTimer('${comp.id}')">↩ Reopen Timer</button>
             <button class="btn btn-sm" onclick="toggleCompletedDetails('${comp.id}')">
