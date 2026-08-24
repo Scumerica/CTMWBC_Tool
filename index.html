@@ -1996,24 +1996,123 @@
     'R2D2.png', 'Sam.png', 'Starlight.png', 'WalmartHomelander.png', 'Wraith.png'
   ];
 
-  const GHOST_COMMENTS = [
-    "You're doing great work today!",
-    "Your attention to detail really shows.",
-    "Keep up the fantastic effort!",
-    "You make this look easy.",
-    "Proud of the work you're putting in.",
-    "You've got this — nice and steady.",
-    "Thanks for being so thorough.",
-    "Your hard work doesn't go unnoticed.",
-    "You're a rockstar auditor.",
-    "Nice pace — you're crushing it.",
-    "You bring good energy to this team.",
-    "Every lap you time matters. Nice job.",
-    "You're sharper than you give yourself credit for.",
-    "Take a breath — you're doing wonderfully.",
-    "Your dedication really stands out.",
-    "You make tough days look manageable."
-  ];
+  const GHOST_COMMENTS = {
+    BillyButcher: [
+      "Oi, you're doing a bang-up job — don't let anyone tell you otherwise.",
+      "Solid work, mate. Proper thorough, that.",
+      "You handled that like a right professional. Respect."
+    ],
+    Castiel: [
+      "I have observed your work. It is good.",
+      "Your diligence does not go unnoticed, even by an angel.",
+      "You carry today's work well. Be at peace."
+    ],
+    Chucky: [
+      "You're killer at this job — in the best way.",
+      "I've got my eye on you... and it's impressed.",
+      "Doll, you are crushing this audit."
+    ],
+    DarthVadar: [
+      "The Force is strong with your work ethic.",
+      "Impressive. Most impressive, in fact.",
+      "Your focus rivals that of a true master."
+    ],
+    Dean: [
+      "Nice work today — you've earned a slice of pie.",
+      "You handle pressure better than most hunters I know.",
+      "Solid hunt, solid audit. Same skill set, really."
+    ],
+    Default: [
+      "You're doing great today!",
+      "Boo! ...I mean, good job.",
+      "Keep it up, you're doing wonderfully."
+    ],
+    Demon: [
+      "You're doing devilishly good work.",
+      "Even I can't find anything to complain about — nice job.",
+      "Sinfully good effort today."
+    ],
+    Demon2: [
+      "Two demons agree: you're crushing it.",
+      "You made a believer out of me.",
+      "Impressively good work — didn't see that coming."
+    ],
+    EyeOfSauruman: [
+      "I see all — and what I see is excellent work.",
+      "My gaze rests on you, and I approve.",
+      "Even from afar, your effort is unmistakable."
+    ],
+    FreddyKruger: [
+      "You're the stuff dreams are made of — nice work.",
+      "Sweet dreams tonight, you've earned them.",
+      "You nailed it. No nightmares here, just good work."
+    ],
+    Gandalf: [
+      "You are more capable than you know.",
+      "A wise choice, taking such care in your work.",
+      "Even the smallest efforts change the course of the day. Well done."
+    ],
+    Hobbit: [
+      "You've got a good heart and a keen eye — well done.",
+      "Second breakfast is earned after work like that.",
+      "Small steps, steady pace — you're doing wonderfully."
+    ],
+    It: [
+      "You float above the rest — great work today.",
+      "Everyone down here thinks you're doing great.",
+      "Balloons and all, you're a natural at this."
+    ],
+    JasonVorhees: [
+      "Quiet, steady, relentless — just like your work ethic.",
+      "Camp's proud of you today.",
+      "You get the job done. Every time."
+    ],
+    KingTheoden: [
+      "Rise, for your work today has honored the house.",
+      "A noble effort, worthy of the Mark.",
+      "Your courage today did not go unnoticed."
+    ],
+    LukeSkywalker: [
+      "Trust your instincts — they're serving you well today.",
+      "You're stronger at this than you think.",
+      "The Force is with you, and so is good work."
+    ],
+    MichaelMeyers: [
+      "Steady. Focused. Unstoppable. That's you today.",
+      "Even silence can say 'well done.'",
+      "You showed up and got it done. That's all that matters."
+    ],
+    PrincessLeia: [
+      "You're our only hope for getting this done right — and you delivered.",
+      "Leadership looks good on you today.",
+      "Rebel or not, that was a job well done."
+    ],
+    R2D2: [
+      "*happy beeps* — translation: great job today!",
+      "Beep boop beep! (That means 'nicely done.')",
+      "Whirr-click! You're doing amazing."
+    ],
+    Sam: [
+      "You did your homework and it shows.",
+      "Thorough, careful, thoughtful — nice work today.",
+      "You found the pattern others would've missed."
+    ],
+    Starlight: [
+      "You shine brighter than you realize.",
+      "That's real heroism — showing up and doing it right.",
+      "Keep that light going, you're doing great."
+    ],
+    WalmartHomelander: [
+      "Bargain-brand hero, top-tier effort. Nice work.",
+      "You didn't need superpowers for that — just skill.",
+      "Budget cape, full-price performance. Well done."
+    ],
+    Wraith: [
+      "I drift nearby, and what I see pleases me — good work.",
+      "Even shadows notice good effort.",
+      "You've done well. Rest easy tonight."
+    ]
+  };
 
   function ghostDisplayName(base) {
     const spaced = base.replace(/([a-z0-9])([A-Z])/g, '$1 $2').trim();
@@ -2088,7 +2187,13 @@
     const bubble = document.getElementById('ghostBubble');
     if (!bubble) return;
     const base = s.selectedGhost.replace(/\.png$/i, '');
-    const msg = base === 'BlackNoir' ? '...' : GHOST_COMMENTS[Math.floor(Math.random() * GHOST_COMMENTS.length)];
+    let msg;
+    if (base === 'BlackNoir') {
+      msg = '...';
+    } else {
+      const pool = GHOST_COMMENTS[base] || GHOST_COMMENTS.Default;
+      msg = pool[Math.floor(Math.random() * pool.length)];
+    }
     bubble.textContent = msg;
     bubble.classList.add('show');
     clearTimeout(ghostBubbleTimer);
