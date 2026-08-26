@@ -603,6 +603,62 @@
     max-width: 46px;
   }
 
+  .timer-notes-btn {
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+    position: relative;
+  }
+  .timer-notes-btn:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+  .timer-notes-btn.has-notes { color: var(--accent-amber); border-color: var(--accent-amber); }
+  .timer-notes-btn.has-notes::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-amber);
+    border: 1px solid var(--bg-card-alt);
+  }
+
+  .timer-qualifiers-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+  .qualifier-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 2px 8px 2px 6px;
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .qualifier-chip input { cursor: pointer; }
+  .qualifier-chip:has(input:checked) {
+    color: var(--text-primary);
+    border-color: var(--accent-blue);
+    background: var(--bg-card-alt);
+  }
+
   .timer-notes-input {
     width: 100%;
     min-height: 56px;
@@ -941,36 +997,38 @@
     position: relative;
     padding-bottom: 35px;
   }
-  .stacked-pillar {
+  .bar-group {
     width: 100%;
-    max-width: 68px;
+    max-width: 90px;
+    height: 100%;
     display: flex;
-    flex-direction: column;
-    border-radius: 5px 5px 0 0;
-    overflow: hidden;
-    background: transparent;
-    transition: height 0.3s ease;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
     z-index: 2;
   }
-  .tier-segment {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: #ffffff;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+  .bar-item {
+    width: 22px;
+    flex-shrink: 0;
+    border-radius: 4px 4px 0 0;
+    position: relative;
     transition: height 0.3s ease;
-    overflow: hidden;
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    text-align: center;
-    padding: 0 2px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
   }
-  .tier-segment.max { background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%); }
-  .tier-segment.avg { background: linear-gradient(180deg, #5D737E 0%, #3F4045 100%); }
-  .tier-segment.min { background: linear-gradient(180deg, #10b981 0%, #059669 100%); border-bottom: none; }
+  .bar-item-value {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+    margin-bottom: 3px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .bar-item.max { background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%); }
+  .bar-item.avg { background: linear-gradient(180deg, #5D737E 0%, #3F4045 100%); }
+  .bar-item.min { background: linear-gradient(180deg, #10b981 0%, #059669 100%); }
 
   .bar-label {
     position: absolute;
@@ -1575,12 +1633,30 @@
     </div>
     <div class="window-body">
       <div id="wbcContainerContent">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span style="font-size:0.8rem; color:var(--text-muted);">Proportional increment stacked comparison</span>
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">Min / Avg / Max — grouped comparison</span>
+            <div class="unit-toggle-wrap">
+              <span>Type:</span>
+              <select class="unit-toggle-select" id="wbcTxTypeFilter" onchange="renderWBC()">
+                <option value="ALL">All Types</option>
+                <option value="Short">Short</option>
+                <option value="Long">Long</option>
+                <option value="Class C/M">Class C/M</option>
+                <option value="CDL">CDL</option>
+              </select>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.7rem; color:var(--text-muted);">
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="Return to Pay" onchange="renderWBC()" /> Return to Pay</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="2nd Verification" onchange="renderWBC()" /> 2nd Verification</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="Vision Test" onchange="renderWBC()" /> Vision Test</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="Knowledge Test" onchange="renderWBC()" /> Knowledge Test</label>
+            </div>
+          </div>
           <div style="display: flex; gap: 10px; font-size: 0.75rem;">
-            <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-max); border-radius:2px;"></span> Max</div>
-            <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-avg); border-radius:2px;"></span> Avg</div>
             <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-min); border-radius:2px;"></span> Min</div>
+            <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-avg); border-radius:2px;"></span> Avg</div>
+            <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-max); border-radius:2px;"></span> Max</div>
           </div>
         </div>
         <div style="overflow-x: auto;">
@@ -1641,6 +1717,9 @@
     "Exit Station"
   ];
 
+  const TRANSACTION_TYPES = ["Short", "Long", "Class C/M", "CDL"];
+  const QUALIFIERS = ["Return to Pay", "2nd Verification", "Vision Test", "Knowledge Test"];
+
   const DEFAULT_OFFICES = [
     "Garland Mega Center",
     "Dallas South Mega Center",
@@ -1685,7 +1764,7 @@
       observations: [],
       timers: [],
       completedTimers: [],
-      compareOfficeSelections: [...DEFAULT_OFFICES],
+      compareOfficeSelections: [],
       compareOfficeDateRanges: {}
     };
   }
@@ -2029,7 +2108,7 @@
   function renderCompareConfigList() {
     const container = document.getElementById('modalListContainer');
     const office = getActiveOffice();
-    if (!office.compareOfficeSelections) office.compareOfficeSelections = [...appState.officeDirectory];
+    if (!office.compareOfficeSelections) office.compareOfficeSelections = [];
     if (!office.compareOfficeDateRanges) office.compareOfficeDateRanges = {};
 
     container.innerHTML = appState.officeDirectory.map(oName => {
@@ -2055,7 +2134,7 @@
 
   function toggleCompareOffice(oName, checked) {
     const office = getActiveOffice();
-    if (!office.compareOfficeSelections) office.compareOfficeSelections = [...appState.officeDirectory];
+    if (!office.compareOfficeSelections) office.compareOfficeSelections = [];
     if (checked) {
       if (!office.compareOfficeSelections.includes(oName)) office.compareOfficeSelections.push(oName);
     } else {
@@ -3008,6 +3087,8 @@
 
       const endTimeStr = getFormattedTimeOfDay();
       const obsId = Date.now() + i;
+      const sampleTxType = TRANSACTION_TYPES[Math.floor(Math.random() * TRANSACTION_TYPES.length)];
+      const sampleQualifiers = QUALIFIERS.filter(() => Math.random() < 0.2);
 
       sampleObs.push({
         id: obsId,
@@ -3016,6 +3097,8 @@
         date: office.date || new Date().toISOString().slice(0, 10),
         startTimeStr: startTimeStr,
         endTimeStr: endTimeStr,
+        txType: sampleTxType,
+        qualifiers: sampleQualifiers,
         values: vals
       });
 
@@ -3029,7 +3112,9 @@
         elapsed: totalTime * 1000,
         steps: [...office.globalCategories],
         recordedLaps: laps,
-        expanded: false
+        expanded: false,
+        txType: sampleTxType,
+        qualifiers: sampleQualifiers
       });
     }
 
@@ -3064,6 +3149,8 @@
       recordedLaps: [],
       notes: '',
       notesExpanded: false,
+      txType: TRANSACTION_TYPES[0],
+      qualifiers: [],
       cardWidth: null,
       cardHeight: null
     };
@@ -3181,6 +3268,8 @@
       date: timer.date || office.date,
       startTimeStr: timer.startTimeStr || getFormattedTimeOfDay(),
       endTimeStr: timer.endTimeStr,
+      txType: timer.txType || TRANSACTION_TYPES[0],
+      qualifiers: [...(timer.qualifiers || [])],
       values: valuesObj
     });
 
@@ -3195,6 +3284,8 @@
       steps: [...timer.steps],
       recordedLaps: [...timer.recordedLaps],
       expanded: false,
+      txType: timer.txType || TRANSACTION_TYPES[0],
+      qualifiers: [...(timer.qualifiers || [])],
       notes: timer.notes || ''
     });
 
@@ -3237,6 +3328,29 @@
     const timer = office.timers?.find(t => String(t.id) === String(id));
     if (timer) {
       timer.notes = val;
+      saveState();
+    }
+  }
+
+  function updateTimerTxType(id, val) {
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.txType = val;
+      saveState();
+    }
+  }
+
+  function updateTimerQualifier(id, qualifier, checked) {
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      if (!timer.qualifiers) timer.qualifiers = [];
+      if (checked) {
+        if (!timer.qualifiers.includes(qualifier)) timer.qualifiers.push(qualifier);
+      } else {
+        timer.qualifiers = timer.qualifiers.filter(q => q !== qualifier);
+      }
       saveState();
     }
   }
@@ -3512,6 +3626,8 @@
       recordedLaps: [...comp.recordedLaps],
       notes: comp.notes || '',
       notesExpanded: false,
+      txType: comp.txType || TRANSACTION_TYPES[0],
+      qualifiers: [...(comp.qualifiers || [])],
       cardWidth: null,
       cardHeight: null
     });
@@ -3670,6 +3786,7 @@
           <div class="timer-row-top">
             <span class="drag-handle" draggable="true" ondragstart="handleTimerCardDragStart(event, '${timer.id}')" ondragend="handleDragEnd()" title="Drag to reorder timer">⠿</span>
             <input class="timer-name-input" value="${timer.name}" oninput="updateTimerName('${timer.id}', this.value)" />
+            <button class="timer-notes-btn ${timer.notes ? 'has-notes' : ''}" onclick="toggleTimerNotes('${timer.id}')" title="Notes">📝</button>
             <select class="timer-size-select" onchange="applyTimerSizePreset('${timer.id}', this.value); this.value='';" title="Resize preset">
               <option value="" selected disabled hidden>Size ▾</option>
               <option value="small">Small</option>
@@ -3678,6 +3795,9 @@
             </select>
             <button class="timer-x-btn" onclick="removeTimer('${timer.id}')" title="Delete timer">✕</button>
           </div>
+          ${timer.notesExpanded ? `
+            <textarea class="timer-notes-input" placeholder="Add notes about this subject/timer..." oninput="updateTimerNotes('${timer.id}', this.value)">${timer.notes || ''}</textarea>
+          ` : ''}
 
           <div class="timer-row-main">
             <div class="timer-icon-cluster">
@@ -3705,14 +3825,20 @@
               ${categoryOptions(activeStepName)}
             </select>
           </div>
-
-          <button class="details-toggle" onclick="toggleTimerNotes('${timer.id}')">
-            <span>📝 Notes${timer.notes ? ' •' : ''}</span>
-            <span>${timer.notesExpanded ? '▲' : '▼'}</span>
-          </button>
-          ${timer.notesExpanded ? `
-            <textarea class="timer-notes-input" placeholder="Add notes about this subject/timer..." oninput="updateTimerNotes('${timer.id}', this.value)">${timer.notes || ''}</textarea>
-          ` : ''}
+          <div class="timer-subtitle-row">
+            <span>Type:</span>
+            <select class="timer-target-inline-select" onchange="updateTimerTxType('${timer.id}', this.value)">
+              ${TRANSACTION_TYPES.map(t => `<option value="${t}" ${t === (timer.txType || TRANSACTION_TYPES[0]) ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div class="timer-qualifiers-row">
+            ${QUALIFIERS.map(q => `
+              <label class="qualifier-chip">
+                <input type="checkbox" ${((timer.qualifiers || []).includes(q)) ? 'checked' : ''} onchange="updateTimerQualifier('${timer.id}', '${q}', this.checked)" />
+                <span>${q}</span>
+              </label>
+            `).join('')}
+          </div>
 
           <button class="details-toggle" onclick="toggleTimerDetails('${timer.id}')">
             <span>Laps: ${timer.recordedLaps.length}</span>
@@ -3796,6 +3922,7 @@
           <div class="realtime-range-badge">
             <span>📅 ${comp.date || office.date} | 🕒 ${comp.startTimeStr || '--'} → ${comp.endTimeStr || '--'}</span>
           </div>
+          ${comp.txType ? `<div style="font-size:0.72rem; color:var(--text-muted); background:var(--bg-desktop); border-radius:6px; padding:6px 8px; line-height:1.35;">🏷️ ${comp.txType}${(comp.qualifiers && comp.qualifiers.length) ? ' · ' + comp.qualifiers.join(', ') : ''}</div>` : ''}
           ${comp.notes ? `<div style="font-size:0.72rem; color:var(--text-muted); background:var(--bg-desktop); border-radius:6px; padding:6px 8px; line-height:1.35;">📝 ${comp.notes}</div>` : ''}
 
           <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
@@ -3824,7 +3951,7 @@
   function getFilteredObservations() {
     if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
       const compareOffice = appState.offices['GARLAND_COMPARE_MODE'];
-      const compareOfficeList = compareOffice?.compareOfficeSelections || [...appState.officeDirectory];
+      const compareOfficeList = compareOffice?.compareOfficeSelections || [];
       const dateRanges = compareOffice?.compareOfficeDateRanges || {};
       let aggregatedObs = [];
       compareOfficeList.forEach(oName => {
@@ -4024,7 +4151,17 @@
     const metricsFoot = document.getElementById('wbcMetricsFoot');
 
     const categories = getActiveWorkflowCategories();
-    const filteredObs = getFilteredObservations();
+    const txTypeFilterEl = document.getElementById('wbcTxTypeFilter');
+    const txTypeFilter = txTypeFilterEl ? txTypeFilterEl.value : 'ALL';
+    const qualifierFilter = Array.from(document.querySelectorAll('.wbcQualifierCheckbox:checked')).map(el => el.value);
+
+    let filteredObs = getFilteredObservations();
+    if (txTypeFilter !== 'ALL') {
+      filteredObs = filteredObs.filter(obs => (obs.txType || TRANSACTION_TYPES[0]) === txTypeFilter);
+    }
+    if (qualifierFilter.length > 0) {
+      filteredObs = filteredObs.filter(obs => qualifierFilter.every(q => (obs.qualifiers || []).includes(q)));
+    }
     let totalMinSum = 0;
     let totalAvgSum = 0;
     let totalMaxSum = 0;
@@ -4091,28 +4228,27 @@
       if (stat.count === 0 || stat.max === 0) {
         return `
           <div class="bar-column">
-            <div class="stacked-pillar" style="height: 4px; background: var(--bg-card-alt);"></div>
+            <div class="bar-group"><div class="bar-item" style="height: 4px; width: 100%; background: var(--bg-card-alt);"></div></div>
             <div class="bar-label">${stat.category}</div>
           </div>
         `;
       }
 
-      const pillarHeightPct = (stat.max / yMax) * 100;
-      const minSegmentPct = (stat.min / stat.max) * 100;
-      const avgDeltaPct = Math.max(0, ((stat.avg - stat.min) / stat.max) * 100);
-      const maxDeltaPct = Math.max(0, ((stat.max - stat.avg) / stat.max) * 100);
+      const minPct = (stat.min / yMax) * 100;
+      const avgPct = (stat.avg / yMax) * 100;
+      const maxPct = (stat.max / yMax) * 100;
 
       return `
         <div class="bar-column">
-          <div class="stacked-pillar" style="height: ${pillarHeightPct}%;">
-            <div class="tier-segment max" style="height: ${maxDeltaPct}%;" title="Max: ${formatTimeVal(stat.max)}">
-              ${maxDeltaPct > 12 ? 'Max: ' + formatTimeVal(stat.max) : (maxDeltaPct > 6 ? formatTimeVal(stat.max) : '')}
+          <div class="bar-group">
+            <div class="bar-item min" style="height: ${minPct}%;" title="Min: ${formatTimeVal(stat.min)}">
+              <span class="bar-item-value">${formatTimeVal(stat.min)}</span>
             </div>
-            <div class="tier-segment avg" style="height: ${avgDeltaPct}%;" title="Avg: ${formatTimeVal(stat.avg)}">
-              ${avgDeltaPct > 12 ? 'Avg: ' + formatTimeVal(stat.avg) : (avgDeltaPct > 6 ? formatTimeVal(stat.avg) : '')}
+            <div class="bar-item avg" style="height: ${avgPct}%;" title="Avg: ${formatTimeVal(stat.avg)}">
+              <span class="bar-item-value">${formatTimeVal(stat.avg)}</span>
             </div>
-            <div class="tier-segment min" style="height: ${minSegmentPct}%;" title="Min: ${formatTimeVal(stat.min)}">
-              ${minSegmentPct > 12 ? 'Min: ' + formatTimeVal(stat.min) : (minSegmentPct > 6 ? formatTimeVal(stat.min) : '')}
+            <div class="bar-item max" style="height: ${maxPct}%;" title="Max: ${formatTimeVal(stat.max)}">
+              <span class="bar-item-value">${formatTimeVal(stat.max)}</span>
             </div>
           </div>
           <div class="bar-label">${stat.category}</div>
