@@ -591,18 +591,6 @@
     padding: 0;
   }
 
-  .timer-size-select {
-    background: var(--bg-desktop);
-    color: var(--text-muted);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 0.65rem;
-    padding: 2px 1px;
-    cursor: pointer;
-    flex-shrink: 0;
-    max-width: 46px;
-  }
-
   .timer-notes-btn {
     background: var(--bg-desktop);
     border: 1px solid var(--border-color);
@@ -3332,12 +3320,15 @@
     }
   }
 
-  function updateTimerTxType(id, val) {
+  function updateTimerTxType(id, val, checked) {
     const office = getActiveOffice();
     const timer = office.timers?.find(t => String(t.id) === String(id));
     if (timer) {
-      timer.txType = val;
-      saveState();
+      if (checked) {
+        timer.txType = val;
+        saveState();
+      }
+      renderTimers();
     }
   }
 
@@ -3399,26 +3390,7 @@
     renderTimers();
   }
 
-  // --- Timer Card Resizing (manual drag + presets) ---
-  const TIMER_SIZE_PRESETS = {
-    small: { w: 220, h: null },
-    medium: { w: 300, h: null },
-    large: { w: 420, h: null }
-  };
-
-  function applyTimerSizePreset(id, key) {
-    const preset = TIMER_SIZE_PRESETS[key];
-    if (!preset) return;
-    const office = getActiveOffice();
-    const timer = office.timers?.find(t => String(t.id) === String(id));
-    if (timer) {
-      timer.cardWidth = preset.w;
-      timer.cardHeight = preset.h;
-      saveState();
-      renderTimers();
-    }
-  }
-
+  // --- Timer Card Resizing (manual drag) ---
   let activeResizeTimerId = null;
   let timerResizeStartDims = { w: 0, h: 0, x: 0, y: 0 };
 
@@ -3787,12 +3759,6 @@
             <span class="drag-handle" draggable="true" ondragstart="handleTimerCardDragStart(event, '${timer.id}')" ondragend="handleDragEnd()" title="Drag to reorder timer">⠿</span>
             <input class="timer-name-input" value="${timer.name}" oninput="updateTimerName('${timer.id}', this.value)" />
             <button class="timer-notes-btn ${timer.notes ? 'has-notes' : ''}" onclick="toggleTimerNotes('${timer.id}')" title="Notes">📝</button>
-            <select class="timer-size-select" onchange="applyTimerSizePreset('${timer.id}', this.value); this.value='';" title="Resize preset">
-              <option value="" selected disabled hidden>Size ▾</option>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
             <button class="timer-x-btn" onclick="removeTimer('${timer.id}')" title="Delete timer">✕</button>
           </div>
           ${timer.notesExpanded ? `
@@ -3825,11 +3791,13 @@
               ${categoryOptions(activeStepName)}
             </select>
           </div>
-          <div class="timer-subtitle-row">
-            <span>Type:</span>
-            <select class="timer-target-inline-select" onchange="updateTimerTxType('${timer.id}', this.value)">
-              ${TRANSACTION_TYPES.map(t => `<option value="${t}" ${t === (timer.txType || TRANSACTION_TYPES[0]) ? 'selected' : ''}>${t}</option>`).join('')}
-            </select>
+          <div class="timer-qualifiers-row">
+            ${TRANSACTION_TYPES.map(t => `
+              <label class="qualifier-chip">
+                <input type="checkbox" ${(timer.txType || TRANSACTION_TYPES[0]) === t ? 'checked' : ''} onchange="updateTimerTxType('${timer.id}', '${t}', this.checked)" />
+                <span>${t}</span>
+              </label>
+            `).join('')}
           </div>
           <div class="timer-qualifiers-row">
             ${QUALIFIERS.map(q => `
