@@ -6,6 +6,9 @@
 <title>CTM & WBC Timing Platform v1.9.1</title>
 <!-- ExcelJS: only used on-demand when generating the formatted Excel export (adds cell styling + embedded chart image support the built-in CSV export can't do) -->
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
   :root {
     --bg-desktop: #02111B;
@@ -1299,9 +1302,45 @@
   .ghost-picker-item.selected { border-color: var(--accent-green); }
   .ghost-picker-item img { width: 100%; height: 56px; object-fit: contain; }
   .ghost-picker-item span { font-size: 0.62rem; color: var(--text-muted); text-align: center; }
+
+  #auth-overlay {
+    position: fixed; inset: 0; background: rgba(2,17,27,0.95); z-index: 99999;
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-stack);
+  }
+  #auth-box { background: var(--bg-window); border: 1px solid var(--border-color); border-radius: 10px; padding: 30px 35px; width: 300px; text-align: center; box-shadow: var(--btn-shadow); }
+  #auth-box h2 { color: var(--text-primary); margin: 0 0 20px; font-size: 20px; }
+  #auth-loading { color: var(--text-muted); font-size: 14px; }
+  #auth-box input {
+    width: 100%; box-sizing: border-box; margin-bottom: 12px; padding: 10px;
+    background: var(--bg-desktop); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px; font-family: inherit;
+  }
+  #auth-box button {
+    width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 10px; border-radius: 6px;
+    background: var(--accent-green); border: none; color: #06251c; font-weight: 600; font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  #auth-box button:hover { filter: brightness(1.1); }
+  #auth-guest-btn { background: var(--bg-card-alt) !important; color: var(--text-primary) !important; }
+  #auth-forgot { color: var(--accent-blue); font-size: 12px; text-decoration: underline; cursor: pointer; margin: -6px 0 10px; text-align: right; }
+  #auth-error { color: var(--accent-red); font-size: 12px; min-height: 16px; margin-bottom: 8px; }
+  #auth-error.success { color: var(--accent-green); }
 </style>
 </head>
 <body>
+<div id="auth-overlay">
+  <div id="auth-box">
+    <h2>CTM &amp; WBC Login</h2>
+    <div id="auth-loading">Loading...</div>
+    <div id="auth-form" style="display:none;">
+      <input type="email" id="auth-email" placeholder="Email" autocomplete="username">
+      <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
+      <div id="auth-forgot">Forgot password?</div>
+      <div id="auth-error"></div>
+      <button id="auth-login-btn">Log In</button>
+      <button id="auth-signup-btn">Sign Up</button>
+      <button id="auth-guest-btn">Continue Locally (No Sync)</button>
+    </div>
+  </div>
+</div>
 
 <!-- Persistent tab to bring the ribbons back once hidden -->
 <button id="showRibbonTab" class="ribbon-toggle-btn show-ribbon-tab" onclick="toggleRibbon()" title="Show top ribbon">☰ Show Ribbon</button>
@@ -1400,6 +1439,7 @@
         </label>
         <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
         <div class="menu-action-item" style="color:var(--accent-red);" onclick="resetAllOfficesData()">⚠️ Reset All App Data</div>
+        <div class="menu-action-item" id="logoutMenuItem" style="display:none;" onclick="logOut()">🚪 Log Out</div>
       </div>
     </div>
   </div>
@@ -1692,6 +1732,107 @@
     const target = e.target.closest('button, .btn, .win-toggle-btn, .office-tab, [role="button"]');
     if (target) e.preventDefault();
   }, true);
+
+  // --- CLOUD SAVE (Firebase Auth + Firestore) ---
+  // Shared login across CTMWBC/NotesTool/Mining Sim: same Firebase project, and since all three
+  // are hosted under the same scumerica.github.io origin, Firebase's persisted session is
+  // automatically shared between them (browser storage is scoped by origin, not by path).
+  const firebaseConfig = {
+    apiKey: "AIzaSyC2HghWsh04zxzRs_cVAqFL3BLr2Je4VKU",
+    authDomain: "scumericas-mining-sim.firebaseapp.com",
+    projectId: "scumericas-mining-sim",
+    storageBucket: "scumericas-mining-sim.firebasestorage.app",
+    messagingSenderId: "715671434008",
+    appId: "1:715671434008:web:df54fec72f91dc0791246d",
+    measurementId: "G-9X103EFC39"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let currentUser = null, cloudSaveData = null, authResolved = false, saveDirty = false;
+
+  async function pushCloudSave(appStateToSave) {
+    if (!currentUser) return;
+    try {
+      await db.collection('ctmwbc_saves').doc(currentUser.uid).set(
+        { appState: appStateToSave, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    } catch (e) { console.error('Cloud save failed:', e); }
+  }
+
+  function showAuthOverlay() { document.getElementById('auth-overlay').style.display = 'flex'; }
+  function hideAuthOverlay() { document.getElementById('auth-overlay').style.display = 'none'; }
+  function setAuthError(msg, success) { const el = document.getElementById('auth-error'); el.textContent = msg || ''; el.classList.toggle('success', !!success); }
+
+  function finishAuth() {
+    authResolved = true;
+    hideAuthOverlay();
+    bootApp();
+  }
+
+  document.getElementById('auth-login-btn').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    setAuthError('');
+    if (!email || !password) { setAuthError('Enter an email and password.'); return; }
+    try {
+      const cred = await auth.signInWithEmailAndPassword(email, password);
+      currentUser = cred.user;
+      const doc = await db.collection('ctmwbc_saves').doc(currentUser.uid).get();
+      cloudSaveData = doc.exists ? doc.data() : null;
+      finishAuth();
+    } catch (e) { setAuthError(e.message); }
+  });
+
+  document.getElementById('auth-signup-btn').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    setAuthError('');
+    if (!email || !password) { setAuthError('Enter an email and password.'); return; }
+    if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, password);
+      currentUser = cred.user;
+      // Migrate any existing local data on this device to the new account
+      let localRaw = null; try { localRaw = localStorage.getItem('CTM_WBC_APP_DATA_V191'); } catch (e) {}
+      const localState = localRaw ? JSON.parse(localRaw) : null;
+      if (localState) { cloudSaveData = { appState: localState }; await pushCloudSave(localState); }
+      finishAuth();
+    } catch (e) { setAuthError(e.message); }
+  });
+
+  document.getElementById('auth-forgot').addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    if (!email) { setAuthError('Enter your email above first, then click Forgot password.'); return; }
+    try { await auth.sendPasswordResetEmail(email); setAuthError('Password reset email sent — check your inbox.', true); }
+    catch (e) { setAuthError(e.message); }
+  });
+
+  document.getElementById('auth-guest-btn').addEventListener('click', () => {
+    currentUser = null; cloudSaveData = null;
+    finishAuth();
+  });
+
+  auth.onAuthStateChanged(async (user) => {
+    if (authResolved) return;
+    if (user) {
+      currentUser = user;
+      try {
+        const doc = await db.collection('ctmwbc_saves').doc(user.uid).get();
+        cloudSaveData = doc.exists ? doc.data() : null;
+      } catch (e) { cloudSaveData = null; }
+      finishAuth();
+    } else {
+      document.getElementById('auth-loading').style.display = 'none';
+      document.getElementById('auth-form').style.display = 'block';
+    }
+  });
+
+  setInterval(() => { if (currentUser && saveDirty) { saveDirty = false; pushCloudSave(appState); } }, 20000);
+
+  function logOut() { auth.signOut().finally(() => location.reload()); }
 
   const DEFAULT_CATEGORIES = [
     "Enter Door",
@@ -2978,9 +3119,35 @@
     } catch (e) {
       console.error('Failed to save app state to localStorage:', e);
     }
+    saveDirty = true;
+  }
+
+  function applyStateDefaults() {
+    if (!appState.unitMode) appState.unitMode = 'both';
+    if (!appState.userList) appState.userList = ["Auditor 1", "Auditor 2", "Team Lead"];
+    if (!appState.activeUser) appState.activeUser = "Auditor 1";
+    if (!appState.officeDirectory) appState.officeDirectory = [...DEFAULT_OFFICES];
+    if (!appState.openOfficeTabs || appState.openOfficeTabs.length === 0) {
+      appState.openOfficeTabs = ["GARLAND_COMPARE_MODE"];
+      appState.activeOfficeId = "GARLAND_COMPARE_MODE";
+    }
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+    if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
+    if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
   }
 
   function loadState() {
+    if (cloudSaveData && cloudSaveData.appState) {
+      try {
+        appState = cloudSaveData.appState;
+        applyStateDefaults();
+        return;
+      } catch (e) {
+        console.error("Cloud load failed", e);
+        initDefaultApp();
+        return;
+      }
+    }
     let raw = null;
     try {
       raw = localStorage.getItem('CTM_WBC_APP_DATA_V191');
@@ -2990,17 +3157,7 @@
     if (raw) {
       try {
         appState = JSON.parse(raw);
-        if (!appState.unitMode) appState.unitMode = 'both';
-        if (!appState.userList) appState.userList = ["Auditor 1", "Auditor 2", "Team Lead"];
-        if (!appState.activeUser) appState.activeUser = "Auditor 1";
-        if (!appState.officeDirectory) appState.officeDirectory = [...DEFAULT_OFFICES];
-        if (!appState.openOfficeTabs || appState.openOfficeTabs.length === 0) {
-          appState.openOfficeTabs = ["GARLAND_COMPARE_MODE"];
-          appState.activeOfficeId = "GARLAND_COMPARE_MODE";
-        }
-        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
-        if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
-        if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
+        applyStateDefaults();
       } catch (e) {
         console.error("Local load failed", e);
         initDefaultApp();
@@ -4259,6 +4416,7 @@
       }
       initDefaultApp();
       saveState();
+      if (currentUser) pushCloudSave(appState);
       renderOfficeTabs();
       refreshAllPanels();
     });
@@ -4637,15 +4795,19 @@
     sel.innerHTML = appState.userList.map(u => `<option value="${u}" ${u === appState.activeUser ? 'selected' : ''}>${u}</option>`).join('');
   }
 
-  // Initialization
-  loadState();
-  if (!appState.deviceMode) appState.deviceMode = detectDefaultDeviceMode();
-  renderOfficeTabs();
-  restoreWindowStates();
-  applyDeviceMode();
-  applyRibbonVisibility();
-  applySettingsUI();
-  refreshAllPanels();
+  // Initialization — deferred until login/signup/guest choice resolves (see auth block above)
+  function bootApp() {
+    const logoutItem = document.getElementById('logoutMenuItem');
+    if (logoutItem) logoutItem.style.display = currentUser ? 'block' : 'none';
+    loadState();
+    if (!appState.deviceMode) appState.deviceMode = detectDefaultDeviceMode();
+    renderOfficeTabs();
+    restoreWindowStates();
+    applyDeviceMode();
+    applyRibbonVisibility();
+    applySettingsUI();
+    refreshAllPanels();
+  }
 </script>
 </body>
 </html>
