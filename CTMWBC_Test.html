@@ -1,0 +1,4651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CTM & WBC Timing Platform v1.9.1</title>
+<!-- ExcelJS: only used on-demand when generating the formatted Excel export (adds cell styling + embedded chart image support the built-in CSV export can't do) -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root {
+    --bg-desktop: #02111B;
+    --bg-window: #30292F;
+    --bg-window-header: #02111B;
+    --bg-card-alt: #3F4045;
+    --text-primary: #FCFCFC;
+    --text-muted: #5D737E;
+    --border-color: #3F4045;
+    --grid-line-color: rgba(93, 115, 126, 0.35);
+    --accent-blue: #5D737E;
+    --accent-green: #10b981;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-purple: #5D737E;
+    --tier-min: #10b981;
+    --tier-avg: #5D737E;
+    --tier-max: #ef4444;
+    --btn-shadow: 0 2px 6px rgba(2, 17, 27, 0.55);
+    --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-stack);
+    background-color: var(--bg-desktop);
+    color: var(--text-primary);
+    line-height: 1.4;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Ribbon 1: Global App Ribbon */
+  header {
+    background-color: var(--bg-window-header);
+    border-bottom: 2px solid var(--border-color);
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    z-index: 9999;
+    position: relative;
+    gap: 10px;
+  }
+  .app-title-group { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+  .app-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
+  .app-version { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; }
+
+  .window-toggles { display: flex; gap: 6px; flex-wrap: wrap; }
+  .win-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .win-toggle-btn.active {
+    background-color: var(--bg-card-alt);
+    border-color: var(--bg-card-alt);
+    color: var(--text-primary);
+    box-shadow: var(--btn-shadow);
+  }
+
+  .styled-select {
+    background: var(--bg-window);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+  .styled-select option { background: var(--bg-window-header); color: var(--text-primary); }
+
+  .unit-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-desktop);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+  .unit-toggle-select {
+    background: transparent;
+    color: var(--text-primary);
+    border: none;
+    font-weight: bold;
+    font-size: 0.72rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* Ribbon 2: Tab Local Ribbon */
+  .office-nav-bar {
+    background: var(--bg-desktop);
+    border-bottom: 1px solid var(--border-color);
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    z-index: 999;
+  }
+  .office-nav-bar::-webkit-scrollbar { height: 4px; }
+  .office-nav-bar::-webkit-scrollbar-thumb { background: var(--bg-card-alt); border-radius: 4px; }
+
+  .tabs-scroll-area {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+  }
+  .office-tab {
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s ease;
+    box-shadow: var(--btn-shadow);
+  }
+  .office-tab:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+  .office-tab.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+    box-shadow: var(--btn-shadow);
+  }
+  .office-tab.static-compare-tab {
+    background: var(--bg-card-alt);
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+  }
+  .office-tab .close-tab-btn {
+    font-size: 0.75rem;
+    color: rgba(252,252,252,0.6);
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+  .office-tab .close-tab-btn:hover { color: #ef4444; }
+
+  .tab-add-btn {
+    background: var(--bg-window);
+    border: 1px dashed var(--border-color);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: var(--btn-shadow);
+  }
+  .tab-add-btn:hover {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+  }
+
+  .date-picker-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .date-picker-input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Flyout Menus */
+  .relative-menu-container { position: relative; }
+  .flyout-menu {
+    position: absolute;
+    top: 38px;
+    right: 0;
+    background: var(--bg-window-header);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 14px 28px rgba(2,17,27,0.6);
+    border-radius: 8px;
+    padding: 8px;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 10000;
+    min-width: 190px;
+  }
+  .flyout-menu.open { display: flex; }
+  .flyout-menu.snap-grid {
+    display: none;
+    grid-template-columns: repeat(3, 110px);
+    gap: 10px;
+    padding: 12px;
+  }
+  .flyout-menu.snap-grid.open { display: grid; }
+
+  .menu-action-item {
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    box-shadow: var(--btn-shadow);
+  }
+  .menu-action-item:hover { background: var(--accent-blue); }
+
+  .snap-card {
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    box-shadow: var(--btn-shadow);
+  }
+  .snap-card:hover {
+    border-color: var(--accent-blue);
+    background: var(--bg-card-alt);
+    transform: translateY(-2px);
+  }
+  .snap-card-title {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: center;
+  }
+  .snap-preview-box {
+    width: 86px;
+    height: 52px;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    display: grid;
+    gap: 2px;
+    padding: 2px;
+  }
+  .snap-zone { background: var(--bg-card-alt); border-radius: 2px; }
+  .snap-card:hover .snap-zone { background: var(--accent-blue); }
+
+  /* Modal Dialog for List Editing */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20000;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    width: 450px;
+    max-width: 90vw;
+    padding: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.05rem;
+  }
+  .modal-list-container {
+    max-height: 260px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* Desktop Area */
+  .desktop-area {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Magnetic Guide Line Overlay */
+  .magnetic-guide {
+    position: absolute;
+    background: var(--accent-blue);
+    pointer-events: none;
+    z-index: 10050;
+    display: none;
+  }
+  .magnetic-guide.horizontal { height: 2px; left: 0; right: 0; }
+  .magnetic-guide.vertical { width: 2px; top: 0; bottom: 0; }
+
+  /* Floating Windows */
+  .floating-window {
+    position: absolute;
+    background-color: var(--bg-window);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    min-width: 320px;
+    min-height: 220px;
+    overflow: hidden;
+    transition: width 0.2s ease, height 0.2s ease, top 0.2s ease, left 0.2s ease;
+  }
+  .floating-window.dragging-window, .floating-window.resizing-window {
+    transition: none !important;
+  }
+  .floating-window.minimized { display: none !important; }
+  .floating-window.maximized {
+    top: 6px !important;
+    left: 6px !important;
+    width: calc(100vw - 12px) !important;
+    height: calc(100vh - 12px) !important;
+    transition: all 0.2s ease !important;
+  }
+  .floating-window.maximized .resize-handle { display: none !important; }
+
+  .window-header {
+    background-color: var(--bg-window-header);
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+    touch-action: none;
+  }
+  .window-title {
+    font-size: 0.88rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+  .window-controls { display: flex; gap: 6px; align-items: center; }
+  
+  .window-tab-bar {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-desktop);
+    padding: 3px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+  }
+  .win-sub-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .win-sub-tab.active {
+    background: var(--accent-blue);
+    color: #fff;
+  }
+
+  .win-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 4px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .win-btn:hover { background: var(--bg-card-alt); color: #fff; }
+  .win-btn svg { display: block; }
+  .win-maximize-btn .icon-restore { display: none; }
+  .win-maximize-btn.is-maximized .icon-max { display: none; }
+  .win-maximize-btn.is-maximized .icon-restore { display: block; }
+
+  .window-body {
+    flex: 1;
+    padding: 12px;
+    overflow: auto;
+    position: relative;
+    touch-action: pan-x pan-y;
+  }
+
+  .resize-handle {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 18px;
+    height: 18px;
+    cursor: nwse-resize;
+    touch-action: none;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  /* Flow Grid & Timer Card — a flex-wrap flow (not a strict grid) so each card can carry
+     its own width/height and dragging one to reorder still snaps the rest up tight beside it. */
+  .timers-flow-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .timer-card {
+    background-color: var(--bg-card-alt);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    width: 280px;
+    max-width: 100%;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+  }
+  body.phone-mode .timer-card { width: 100% !important; height: auto !important; }
+
+  .timer-card-top-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    position: relative;
+    padding-right: 28px; /* Room for clear button */
+  }
+  .timer-name-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  .timer-name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border-color);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: bold;
+    width: 100%;
+  }
+  .timer-total-badge {
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--accent-blue);
+    font-weight: bold;
+    white-space: nowrap;
+    text-align: center;
+    align-self: center;
+  }
+  .timer-close-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    background-color: #ef4444;
+    border: 1px solid #dc2626;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 0.75rem;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    z-index: 100; /* Prevent overlap issues with inputs */
+  }
+
+  .realtime-range-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--bg-desktop);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--bg-card-alt);
+    font-family: monospace;
+    width: 100%;
+    white-space: nowrap;
+  }
+
+  /* Compact "native stopwatch" style — active timer card */
+  .timer-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+  }
+  .timer-row-top .timer-name-input {
+    font-size: 0.82rem;
+    font-weight: 700;
+    width: auto;
+    flex: 1;
+    min-width: 0;
+  }
+  .timer-x-btn {
+    background: var(--bg-card-alt);
+    border: none;
+    color: var(--text-primary);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+  }
+
+  .timer-notes-btn {
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+    position: relative;
+  }
+  .timer-notes-btn:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+  .timer-notes-btn.has-notes { color: var(--accent-amber); border-color: var(--accent-amber); }
+  .timer-notes-btn.has-notes::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-amber);
+    border: 1px solid var(--bg-card-alt);
+  }
+
+  .timer-qualifiers-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+  .qualifier-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 2px 8px 2px 6px;
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .qualifier-chip input { cursor: pointer; }
+  .qualifier-chip:has(input:checked) {
+    color: var(--text-primary);
+    border-color: var(--accent-blue);
+    background: var(--bg-card-alt);
+  }
+
+  .timer-notes-input {
+    width: 100%;
+    min-height: 56px;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    padding: 6px 8px;
+    resize: vertical;
+    outline: none;
+  }
+  .timer-x-btn:hover { background: var(--accent-red); color: #fff; }
+
+  .timer-row-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+  .timer-icon-cluster { display: flex; gap: 6px; flex-shrink: 0; }
+  .timer-icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .timer-icon-btn:disabled { opacity: 0.35; cursor: default; }
+  .timer-icon-btn.play { background: var(--accent-green); }
+  .timer-icon-btn.pause { background: var(--accent-amber); color: #000; }
+  .timer-icon-btn.lap { background: var(--bg-card-alt); }
+  .timer-icon-btn.lap.is-stop-alias { background: var(--accent-red); }
+  .timer-icon-btn.stop { background: var(--accent-red); }
+
+  .timer-display-plain {
+    flex: 1;
+    min-width: 0;
+    font-family: monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: right;
+    letter-spacing: 0.5px;
+  }
+  .timer-display-plain.tappable { cursor: pointer; }
+  .timer-display-plain.tappable:active { opacity: 0.7; }
+
+  .timer-subtitle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    width: 100%;
+  }
+  .timer-target-inline-select {
+    background: transparent;
+    color: var(--accent-blue);
+    border: none;
+    font-weight: 600;
+    font-size: 0.7rem;
+    outline: none;
+    cursor: pointer;
+    max-width: 55%;
+    text-align: right;
+  }
+
+  /* Lap Drawer & Drag Handle */
+  .details-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    width: 100%;
+  }
+  .lap-list-drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+  }
+  .lap-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--bg-window-header);
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--bg-card-alt);
+    width: 100%;
+  }
+  .lap-box-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+  .lap-box-top select {
+    background: var(--bg-window);
+    color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-size: 0.78rem;
+    flex: 1;
+    max-width: 170px;
+    outline: none;
+  }
+  .lap-box-metrics {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-left: auto;
+    font-family: monospace;
+    line-height: 1.2;
+  }
+  .lap-time-tag {
+    font-weight: bold;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+  }
+  .lap-time-tag.lap-fastest { color: var(--accent-green); }
+  .lap-time-tag.lap-slowest { color: var(--accent-red); }
+  .lap-tod-tag {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+  }
+
+  .drag-handle {
+    cursor: grab;
+    font-size: 1rem;
+    color: var(--text-muted);
+    padding: 0 2px;
+    touch-action: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .dragging { opacity: 0.35; transform: scale(0.98); }
+  .drag-over { border: 2px dashed var(--accent-blue) !important; }
+
+  /* UI Buttons */
+  .btn {
+    background-color: var(--bg-card-alt);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+    box-shadow: var(--btn-shadow);
+    transition: filter 0.12s ease;
+  }
+  .btn:hover { filter: brightness(1.15); }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background-color: var(--accent-blue); border-color: var(--accent-blue); }
+  .btn-success { background-color: var(--accent-green); border-color: var(--accent-green); }
+  .btn-danger { background-color: var(--accent-red); border-color: var(--accent-red); }
+  .btn-amber { background-color: var(--accent-amber); border-color: var(--accent-amber); color: #000; }
+  .btn-purple { background-color: var(--accent-purple); border-color: var(--accent-purple); }
+  .btn-sm { padding: 3px 6px; font-size: 0.75rem; }
+  .btn-xs { padding: 3px 6px; font-size: 0.8rem; line-height: 1; }
+
+  /* iOS-style toggle switch (device mode, settings) */
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--bg-card-alt);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    box-shadow: var(--btn-shadow);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .toggle-switch-knob {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .toggle-switch.on { background: var(--accent-blue); border-color: var(--accent-blue); }
+  .toggle-switch.on .toggle-switch-knob { transform: translateX(18px); }
+
+  .device-mode-switch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .device-mode-switch-wrap .active-side { color: #fff; }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 8px 2px;
+    border-bottom: 1px solid var(--bg-card-alt);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-text { display: flex; flex-direction: column; gap: 3px; }
+  .settings-row-text strong { font-size: 0.85rem; }
+  .settings-row-text span { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border-color); }
+  th { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; }
+  
+  .obs-header-box { display: flex; flex-direction: column; gap: 4px; }
+  .obs-time-range-tag {
+    font-size: 0.68rem;
+    color: var(--accent-blue);
+    font-family: monospace;
+    font-weight: normal;
+    background: var(--bg-desktop);
+    padding: 2px 4px;
+    border-radius: 4px;
+    border: 1px solid var(--bg-card-alt);
+    white-space: nowrap;
+    text-align: center;
+  }
+  .date-divider-th {
+    background: var(--bg-window);
+    color: #f59e0b;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.75rem;
+    border-left: 2px dashed #f59e0b;
+    border-right: 2px dashed #f59e0b;
+  }
+
+  .obs-cell-input-group { display: flex; align-items: center; gap: 4px; }
+  input[type="number"], input[type="text"] {
+    background-color: var(--bg-card-alt);
+    border: 1px solid var(--border-color);
+    color: #fff;
+    padding: 3px 6px;
+    border-radius: 4px;
+    width: 100%;
+    font-size: 0.8rem;
+  }
+  .min-hint { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+
+  /* Stacked WBC Graph */
+  .wbc-stage {
+    position: relative;
+    height: 380px;
+    min-width: 780px;
+    display: flex;
+    padding-left: 70px;
+    margin-top: 10px;
+  }
+  .wbc-grid-container {
+    position: absolute;
+    top: 0;
+    left: 70px;
+    right: 0;
+    bottom: 35px;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column-reverse;
+    border-left: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
+  }
+  .wbc-grid-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed var(--grid-line-color);
+    display: flex;
+    align-items: center;
+  }
+  .wbc-grid-label {
+    position: absolute;
+    left: -70px;
+    width: 62px;
+    text-align: right;
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transform: translateY(-50%);
+    white-space: nowrap;
+  }
+  .bar-chart-container {
+    position: absolute;
+    top: 0;
+    left: 70px;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    padding-right: 15px;
+  }
+  .bar-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    position: relative;
+    padding-bottom: 35px;
+  }
+  .bar-group {
+    width: 100%;
+    max-width: 90px;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    z-index: 2;
+  }
+  .bar-item {
+    width: 22px;
+    flex-shrink: 0;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    transition: height 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  }
+  .bar-item-value {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    transform: translateX(-50%);
+    margin-bottom: 3px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .bar-item.max { background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%); }
+  .bar-item.avg { background: linear-gradient(180deg, #5D737E 0%, #3F4045 100%); }
+  .bar-item.min { background: linear-gradient(180deg, #10b981 0%, #059669 100%); }
+
+  .bar-label {
+    position: absolute;
+    bottom: 4px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+    width: 80px;
+    word-wrap: break-word;
+    line-height: 1.1;
+  }
+
+  /* Collapsible top ribbons — reclaims vertical space, esp. in phone portrait */
+  .ribbon-toggle-btn {
+    background: var(--bg-card-alt);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: var(--btn-shadow);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: filter 0.12s ease;
+  }
+  .ribbon-toggle-btn:hover { color: var(--text-primary); filter: brightness(1.15); }
+  .show-ribbon-tab {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+  }
+  body.ribbon-hidden .show-ribbon-tab { display: block; }
+  body.ribbon-hidden header,
+  body.ribbon-hidden .office-nav-bar {
+    display: none !important;
+  }
+
+  /* ============================================================
+     PHONE MODE — stacked, scrollable, single-column layout.
+     Works in either orientation since it's a fluid flex column
+     instead of the fixed-canvas floating-window layout used for
+     iPad / desktop / web.
+     ============================================================ */
+  body.phone-mode {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: auto;
+    min-height: 100vh;
+    touch-action: pan-y;
+  }
+  body.phone-mode header {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 8px;
+  }
+  body.phone-mode .btn,
+  body.phone-mode .win-toggle-btn,
+  body.phone-mode .styled-select {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+  body.phone-mode .office-nav-bar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 6px;
+  }
+  body.phone-mode .office-nav-bar > div {
+    flex: 1 1 100%;
+  }
+  body.phone-mode .desktop-area {
+    overflow-y: visible;
+    overflow-x: hidden;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 10px;
+  }
+  body.phone-mode .magnetic-guide { display: none !important; }
+  body.phone-mode .floating-window {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    z-index: auto !important;
+    transition: none !important;
+  }
+  body.phone-mode .floating-window.maximized {
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  /* Timers first — that's the part used in the field while stopwatching */
+  body.phone-mode #win-timers { order: 1; }
+  body.phone-mode #win-ctm { order: 2; }
+  body.phone-mode #win-wbc { order: 3; }
+  body.phone-mode .window-header {
+    cursor: default;
+    touch-action: pan-y;
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  body.phone-mode .window-controls { flex-wrap: wrap; justify-content: flex-end; }
+  body.phone-mode .resize-handle { display: none !important; }
+  body.phone-mode .win-maximize-btn { display: none !important; }
+  body.phone-mode .window-body { touch-action: pan-y; }
+  body.phone-mode .timers-flow-grid { flex-direction: column; }
+  body.phone-mode .timer-display-plain { font-size: 1.6rem; }
+  body.phone-mode .timer-icon-btn { width: 34px; height: 34px; }
+  body.phone-mode .wbc-stage { min-width: 600px; }
+
+  /* iOS auto-zooms the viewport when a focused input's font-size is under 16px, then re-snaps
+     the scroll position while zoomed — on an embedded page that drags the fixed top ribbon out
+     from under the host site's own banner. Keeping every text field at 16px+ stops the zoom (and
+     the ribbon jump that comes with it) at the source.
+     Gated on (pointer: coarse) — a touch-primary-input device — rather than a viewport max-width,
+     since this app is embedded in a Google Sites "whole page" iframe whose own rendered CSS width
+     (what a max-width query would measure) doesn't necessarily track the phone's physical width. */
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Ghost companion */
+  @keyframes ghost-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .ghost-float {
+    position: fixed;
+    right: 14px;
+    bottom: 14px;
+    width: 44px;
+    height: 44px;
+    z-index: 15000;
+    display: none;
+    cursor: grab;
+    opacity: 0.88;
+    touch-action: none;
+    transform: var(--ghost-anchor, none);
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .ghost-float.visible { display: block; }
+  .ghost-float.dragging { cursor: grabbing; opacity: 1; transition: none; }
+  .ghost-float.dragging img { animation-play-state: paused; }
+  .ghost-float img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+    animation: ghost-bob 3.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .ghost-float:hover { opacity: 1; transform: var(--ghost-anchor, none) scale(1.08); }
+  .ghost-float.dragging:hover { transform: none; }
+
+  /* Ghost position variants (4 corners + 4 edge-centers) — used for the picker's starting position */
+  .ghost-float[data-pos="top-left"]      { top: 14px; left: 14px; right: auto; bottom: auto; }
+  .ghost-float[data-pos="top-center"]    { top: 14px; left: 50%; right: auto; bottom: auto; --ghost-anchor: translateX(-50%); }
+  .ghost-float[data-pos="top-right"]     { top: 14px; right: 14px; left: auto; bottom: auto; }
+  .ghost-float[data-pos="middle-left"]   { top: 50%; left: 14px; right: auto; bottom: auto; --ghost-anchor: translateY(-50%); }
+  .ghost-float[data-pos="middle-right"]  { top: 50%; right: 14px; left: auto; bottom: auto; --ghost-anchor: translateY(-50%); }
+  .ghost-float[data-pos="bottom-left"]   { bottom: 14px; left: 14px; right: auto; top: auto; }
+  .ghost-float[data-pos="bottom-center"] { bottom: 14px; left: 50%; right: auto; top: auto; --ghost-anchor: translateX(-50%); }
+  .ghost-float[data-pos="bottom-right"]  { bottom: 14px; right: 14px; left: auto; top: auto; }
+  /* Freely dragged — exact px position set inline by JS, no anchor transform */
+  .ghost-float[data-pos="custom"]        { --ghost-anchor: none; }
+
+  /* Bubble placement (top/bottom/left/right + arrow position) is computed in JS via
+     positionGhostBubble() since the ghost can be dragged anywhere on screen — a fixed
+     CSS-only placement can't account for every possible spot. */
+  .ghost-bubble {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    max-width: 190px;
+    background: var(--bg-window);
+    border: 1px solid var(--border-color);
+    color: #fff;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    padding: 8px 10px;
+    border-radius: 8px;
+    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.6);
+    opacity: 0;
+    transform: translateY(4px);
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .ghost-bubble.show { opacity: 1; transform: translateY(0); }
+  .ghost-bubble.below { transform: translateY(-4px); }
+  .ghost-bubble.below.show { transform: translateY(0); }
+  .ghost-bubble::after {
+    content: '';
+    position: absolute;
+    left: var(--arrow-left, 14px);
+    border: 6px solid transparent;
+    top: 100%;
+    border-top-color: var(--border-color);
+  }
+  .ghost-bubble.below::after {
+    top: auto;
+    bottom: 100%;
+    border-top-color: transparent;
+    border-bottom-color: var(--border-color);
+  }
+
+  .ghost-pos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 36px);
+    grid-template-rows: repeat(3, 36px);
+    gap: 6px;
+    justify-content: center;
+    margin: 2px 0 4px;
+  }
+  .ghost-pos-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-card-alt);
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .ghost-pos-btn:hover { border-color: var(--accent-blue); }
+  .ghost-pos-btn.selected { border-color: var(--accent-green); }
+  .ghost-pos-btn .dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-blue);
+  }
+  .ghost-pos-blank { visibility: hidden; }
+  .ghost-pos-btn[data-pos="top-left"] .dot { top: 4px; left: 4px; }
+  .ghost-pos-btn[data-pos="top-center"] .dot { top: 4px; left: 50%; transform: translateX(-50%); }
+  .ghost-pos-btn[data-pos="top-right"] .dot { top: 4px; right: 4px; }
+  .ghost-pos-btn[data-pos="middle-left"] .dot { top: 50%; left: 4px; transform: translateY(-50%); }
+  .ghost-pos-btn[data-pos="middle-right"] .dot { top: 50%; right: 4px; transform: translateY(-50%); }
+  .ghost-pos-btn[data-pos="bottom-left"] .dot { bottom: 4px; left: 4px; }
+  .ghost-pos-btn[data-pos="bottom-center"] .dot { bottom: 4px; left: 50%; transform: translateX(-50%); }
+  .ghost-pos-btn[data-pos="bottom-right"] .dot { bottom: 4px; right: 4px; }
+
+  .ghost-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+  .ghost-picker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-card-alt);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px 4px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .ghost-picker-item:hover { border-color: var(--accent-blue); transform: translateY(-2px); }
+  .ghost-picker-item.selected { border-color: var(--accent-green); }
+  .ghost-picker-item img { width: 100%; height: 56px; object-fit: contain; }
+  .ghost-picker-item span { font-size: 0.62rem; color: var(--text-muted); text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- Persistent tab to bring the ribbons back once hidden -->
+<button id="showRibbonTab" class="ribbon-toggle-btn show-ribbon-tab" onclick="toggleRibbon()" title="Show top ribbon">☰ Show Ribbon</button>
+
+<!-- RIBBON 1: GLOBAL APP RIBBON -->
+<header>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <div class="app-title-group">
+      <div class="app-title">⚡ CTM & WBC Workspace</div>
+      <div class="app-version">v1.9.1</div>
+    </div>
+  </div>
+
+  <div class="device-mode-switch-wrap" title="Layout for your device">
+    <span id="deviceModeLabelDesktop">🖥️ Desktop</span>
+    <button class="toggle-switch" id="deviceModeSwitch" role="switch" aria-checked="false" onclick="toggleDeviceMode()" title="Switch between floating-window (iPad/desktop) and stacked (phone) layout">
+      <span class="toggle-switch-knob"></span>
+    </button>
+    <span id="deviceModeLabelPhone">📱 Phone</span>
+  </div>
+
+  <button class="ribbon-toggle-btn" onclick="toggleRibbon()" title="Hide the top ribbons to save screen space (handy in portrait)">🙈 Hide Ribbon</button>
+
+  <div class="window-toggles">
+    <button class="win-toggle-btn active" id="btn-win-timers" onclick="toggleWindowVisible('win-timers')">⏱️ Timers</button>
+    <button class="win-toggle-btn active" id="btn-win-ctm" onclick="toggleWindowVisible('win-ctm')">📋 CTM</button>
+    <button class="win-toggle-btn active" id="btn-win-wbc" onclick="toggleWindowVisible('win-wbc')">📊 WBC</button>
+  </div>
+  
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <!-- Layout Picker Menu -->
+    <div class="relative-menu-container">
+      <button class="btn btn-sm" onclick="toggleSnapMenu(event)">⊞ Layouts ▾</button>
+      <div class="flyout-menu snap-grid" id="snapFlyout">
+        <div class="snap-card" onclick="applyPresetLayout('freeFloat')">
+          <div class="snap-preview-box" style="display:flex; align-items:center; justify-content:center;">
+            <span style="font-size:1.1rem; color:var(--accent-blue);">✦</span>
+          </div>
+          <span class="snap-card-title">Free Move</span>
+        </div>
+        <div class="snap-card" onclick="applyPresetLayout('dualSplit')">
+          <div class="snap-preview-box" style="grid-template-columns: 1fr 1fr;">
+            <div class="snap-zone"></div><div class="snap-zone"></div>
+          </div>
+          <span class="snap-card-title">Dual Split</span>
+        </div>
+        <div class="snap-card" onclick="applyPresetLayout('tripleSplit')">
+          <div class="snap-preview-box" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="snap-zone"></div><div class="snap-zone"></div><div class="snap-zone"></div>
+          </div>
+          <span class="snap-card-title">Triple Columns</span>
+        </div>
+        <div class="snap-card" onclick="applyPresetLayout('analyticsFocus')">
+          <div class="snap-preview-box" style="grid-template-columns: 1fr 2fr;">
+            <div class="snap-zone"></div><div class="snap-zone"></div>
+          </div>
+          <span class="snap-card-title">Analytics Focus</span>
+        </div>
+        <div class="snap-card" onclick="applyPresetLayout('timingStation')">
+          <div class="snap-preview-box" style="grid-template-columns: 1fr;">
+            <div class="snap-zone" style="height:100%;"></div>
+          </div>
+          <span class="snap-card-title">Timer Focus</span>
+        </div>
+        <div class="snap-card" onclick="applyPresetLayout('fullCascade')">
+          <div class="snap-preview-box" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1.2fr 1fr;">
+            <div class="snap-zone"></div><div class="snap-zone"></div><div class="snap-zone" style="grid-column: span 2;"></div>
+          </div>
+          <span class="snap-card-title">Full Workspace</span>
+        </div>
+        <div class="snap-card" onclick="applyPresetLayout('fullCascadeInverse')">
+          <div class="snap-preview-box" style="grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1.2fr;">
+            <div class="snap-zone" style="grid-column: span 2;"></div><div class="snap-zone"></div><div class="snap-zone"></div>
+          </div>
+          <span class="snap-card-title">Full Top-Heavy</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tools Dropdown Menu -->
+    <div class="relative-menu-container">
+      <button class="btn btn-sm" onclick="toggleToolsMenu(event)">🔧 Tools ▾</button>
+      <div class="flyout-menu" id="toolsFlyout">
+        <div class="menu-action-item" onclick="openManagerModal('offices')">🏢 Manage Offices</div>
+        <div class="menu-action-item" onclick="openManagerModal('steps')">📋 Manage Steps/Laps</div>
+        <div class="menu-action-item" onclick="openManagerModal('users')">👤 Manage Users</div>
+        <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
+        <div class="menu-action-item" onclick="generateTestSampleData()">🧪 Test (10 Obs)</div>
+        <div class="menu-action-item" onclick="openSettingsModal()">⚙️ Settings</div>
+        <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
+        <div class="menu-action-item" onclick="openExportScopeModal('csv')">📄 Export CSV</div>
+        <div class="menu-action-item" onclick="openExportScopeModal('excel')">📊 Export Excel Report</div>
+        <div class="menu-action-item" onclick="exportData()">📤 Export Session JSON</div>
+        <label class="menu-action-item" style="margin:0; cursor:pointer;">
+          📥 Import Session JSON <input type="file" style="display:none;" onchange="importData(event)" accept=".json">
+        </label>
+        <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
+        <div class="menu-action-item" style="color:var(--accent-red);" onclick="resetAllOfficesData()">⚠️ Reset All App Data</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- RIBBON 2: TAB LOCAL RIBBON -->
+<div class="office-nav-bar" id="officeNavBar">
+  <!-- Dynamic Tabs & Controls Rendered Here -->
+</div>
+
+<!-- Modal Dialog for Managing Lists -->
+<div class="modal-overlay" id="listManagerModal" onclick="closeManagerModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span id="managerModalTitle">Manage List</span>
+      <button class="win-btn" onclick="closeManagerModal()">✕</button>
+    </div>
+    <div style="display:flex; gap:6px;">
+      <input type="text" id="modalNewItemInput" placeholder="Add new item..." />
+      <button class="btn btn-primary btn-sm" onclick="modalAddItem()">Add</button>
+    </div>
+    <div class="modal-list-container" id="modalListContainer">
+      <!-- Items rendered here -->
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal" onclick="closeSettingsModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span>⚙️ Settings</span>
+      <button class="win-btn" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <strong>Tap Timer to Lap</strong>
+        <span>Tapping/clicking the stopwatch display records a lap, same as pressing the Lap button.</span>
+      </div>
+      <button class="toggle-switch" id="settingTapToLapSwitch" role="switch" aria-checked="false" onclick="toggleSetting('tapToLap')">
+        <span class="toggle-switch-knob"></span>
+      </button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <strong>Last Lap Stops Timer</strong>
+        <span>While timing the final step, pressing Lap stops and completes the timer instead of adding another lap.</span>
+      </div>
+      <button class="toggle-switch" id="settingLastLapStopsSwitch" role="switch" aria-checked="false" onclick="toggleSetting('lastLapStops')">
+        <span class="toggle-switch-knob"></span>
+      </button>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <strong>Show Ghost</strong>
+        <span>A small friendly ghost hangs out on screen. Tap it for a kind word.</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn btn-sm" id="changeGhostBtn" style="display:none;" onclick="openGhostPicker()">Change</button>
+        <button class="toggle-switch" id="settingShowGhostSwitch" role="switch" aria-checked="false" onclick="toggleGhostSetting()">
+          <span class="toggle-switch-knob"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ghost Picker Modal -->
+<div class="modal-overlay" id="ghostPickerModal" onclick="closeGhostPicker()">
+  <div class="modal-box" style="width:520px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span>👻 Pick Your Ghost</span>
+      <button class="win-btn" onclick="closeGhostPicker()">✕</button>
+    </div>
+    <div style="font-size:0.8rem; color:var(--text-muted);">Choose a little ghost to keep you company.</div>
+    <div class="ghost-picker-grid" id="ghostPickerGrid"></div>
+    <div style="font-size:0.8rem; color:var(--text-muted); border-top:1px solid var(--bg-card-alt); padding-top:10px;">Starting position — you can also drag the ghost anywhere on screen afterward.</div>
+    <div class="ghost-pos-grid" id="ghostPosGrid"></div>
+  </div>
+</div>
+
+<!-- Custom Confirm Modal — replaces native confirm(), which browsers can silently
+     suppress inside embedded/sandboxed iframes (e.g. some site-builder embeds). -->
+<div class="modal-overlay" id="confirmModal" onclick="closeConfirmModal(false)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span>⚠️ Confirm</span>
+    </div>
+    <div id="confirmModalMessage" style="font-size:0.9rem; line-height:1.4;"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn btn-sm" onclick="closeConfirmModal(false)">Cancel</button>
+      <button class="btn btn-sm btn-danger" onclick="closeConfirmModal(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Scope Picker -->
+<div class="modal-overlay" id="exportScopeModal" onclick="closeExportScopeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span id="exportScopeModalTitle">Export</span>
+      <button class="win-btn" onclick="closeExportScopeModal()">✕</button>
+    </div>
+    <div style="font-size:0.8rem; color:var(--text-muted);">Which data should this export include?</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <button class="btn btn-primary" style="justify-content:flex-start; padding:10px 12px;" onclick="runExport('current')">
+        📍 Current Office &amp; Date — matches what's on screen now
+      </button>
+      <button class="btn" style="justify-content:flex-start; padding:10px 12px;" onclick="runExport('all')">
+        🗂️ Everything — all offices, all dates recorded so far
+      </button>
+    </div>
+    <div id="exportScopeStatus" style="font-size:0.78rem; color:var(--text-muted);"></div>
+  </div>
+</div>
+
+<!-- Desktop Workspace Area -->
+<div class="desktop-area" id="desktop" onclick="closeAllFlyouts()">
+
+  <!-- Magnetic Guide Line Overlay -->
+  <div class="magnetic-guide horizontal" id="guideH"></div>
+  <div class="magnetic-guide vertical" id="guideV"></div>
+
+  <!-- WINDOW 1: UNIFIED TIMERS WORKSPACE -->
+  <div class="floating-window" id="win-timers" style="top: 15px; left: 15px; width: 480px; height: 580px; z-index: 10;">
+    <div class="window-header" onpointerdown="startWindowDrag(event, 'win-timers')">
+      <div class="window-title">⏱️ Timers</div>
+      <div class="window-controls">
+        <div class="unit-toggle-wrap">
+          <span>Unit:</span>
+          <select class="unit-toggle-select timeUnitModeSelect" onchange="changeUnitMode(this.value)">
+            <option value="seconds">Seconds (s)</option>
+            <option value="minutes">Minutes (m)</option>
+            <option value="both" selected>Both (s + m)</option>
+          </select>
+        </div>
+        <div class="window-tab-bar">
+          <button class="win-sub-tab active" id="subtab-active" onclick="switchTimersSubTab('active')">Active</button>
+          <button class="win-sub-tab" id="subtab-completed" onclick="switchTimersSubTab('completed')">Completed</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addTimerCard()" id="timersAddBtn">+ Add</button>
+        <button class="win-btn win-maximize-btn" id="max-btn-win-timers" onclick="toggleWindowMaximize('win-timers')" title="Maximize">
+          <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="var(--bg-window-header)" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="win-btn" onclick="toggleWindowVisible('win-timers')" title="Minimize">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="window-body">
+      <!-- Active Timers Tab View -->
+      <div id="timers-view-active" class="timers-sub-view">
+        <div class="timers-flow-grid" id="timersContainer"></div>
+      </div>
+      <!-- Completed Timers Tab View -->
+      <div id="timers-view-completed" class="timers-sub-view" style="display: none;">
+        <div class="timers-flow-grid" id="completedTimersContainer"></div>
+      </div>
+    </div>
+    <div class="resize-handle" onpointerdown="startWindowResize(event, 'win-timers')" title="Resize">◢</div>
+  </div>
+
+  <!-- WINDOW 2: CTM MATRIX -->
+  <div class="floating-window" id="win-ctm" style="top: 15px; left: 515px; width: 580px; height: 580px; z-index: 12;">
+    <div class="window-header" onpointerdown="startWindowDrag(event, 'win-ctm')">
+      <div class="window-title" id="ctmWindowTitle">📋 CTM</div>
+      <div class="window-controls">
+        <div class="unit-toggle-wrap">
+          <span>Unit:</span>
+          <select class="unit-toggle-select timeUnitModeSelect" onchange="changeUnitMode(this.value)">
+            <option value="seconds">Seconds (s)</option>
+            <option value="minutes">Minutes (m)</option>
+            <option value="both" selected>Both (s + m)</option>
+          </select>
+        </div>
+        <button class="win-btn win-maximize-btn" id="max-btn-win-ctm" onclick="toggleWindowMaximize('win-ctm')" title="Maximize">
+          <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="var(--bg-window-header)" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="win-btn" onclick="toggleWindowVisible('win-ctm')" title="Minimize">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div id="ctmContainerContent">
+        <table id="ctmTable">
+          <thead id="ctmTableHead"></thead>
+          <tbody id="ctmTableBody"></tbody>
+          <tfoot id="ctmTableFoot" style="background:var(--bg-desktop); font-weight:bold; border-top:2px solid var(--border-color);"></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="resize-handle" onpointerdown="startWindowResize(event, 'win-ctm')" title="Resize">◢</div>
+  </div>
+
+  <!-- WINDOW 3: WBC GRAPH & STATS -->
+  <div class="floating-window" id="win-wbc" style="top: 610px; left: 15px; width: 1080px; height: 480px; z-index: 13;">
+    <div class="window-header" onpointerdown="startWindowDrag(event, 'win-wbc')">
+      <div class="window-title" id="wbcWindowTitle">📊 WBC</div>
+      <div class="window-controls">
+        <div class="unit-toggle-wrap">
+          <span>Unit:</span>
+          <select class="unit-toggle-select timeUnitModeSelect" onchange="changeUnitMode(this.value)">
+            <option value="seconds">Seconds (s)</option>
+            <option value="minutes">Minutes (m)</option>
+            <option value="both" selected>Both (s + m)</option>
+          </select>
+        </div>
+        <button class="win-btn win-maximize-btn" id="max-btn-win-wbc" onclick="toggleWindowMaximize('win-wbc')" title="Maximize">
+          <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
+          <svg class="icon-restore" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.6" y="1.6" width="7.8" height="7.8" rx="1.1" stroke="currentColor" stroke-width="1.5"/><rect x="1.6" y="4.6" width="7.8" height="7.8" rx="1.1" fill="var(--bg-window-header)" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="win-btn" onclick="toggleWindowVisible('win-wbc')" title="Minimize">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="10.4" width="9" height="1.6" rx="0.8" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="window-body">
+      <div id="wbcContainerContent">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+            <span style="font-size:0.8rem; color:var(--text-muted);">Min / Avg / Max — grouped comparison</span>
+            <div class="unit-toggle-wrap">
+              <span>Type:</span>
+              <select class="unit-toggle-select" id="wbcTxTypeFilter" onchange="renderWBC()">
+                <option value="ALL">All Types</option>
+                <option value="Short">Short</option>
+                <option value="Long">Long</option>
+                <option value="Class C/M">Class C/M</option>
+                <option value="CDL">CDL</option>
+              </select>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.7rem; color:var(--text-muted);">
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="Return to Pay" onchange="renderWBC()" /> Return to Pay</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="2nd Verification" onchange="renderWBC()" /> 2nd Verification</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="Vision Test" onchange="renderWBC()" /> Vision Test</label>
+              <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" class="wbcQualifierCheckbox" value="Knowledge Test" onchange="renderWBC()" /> Knowledge Test</label>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; font-size: 0.75rem;">
+            <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-min); border-radius:2px;"></span> Min</div>
+            <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-avg); border-radius:2px;"></span> Avg</div>
+            <div><span style="display:inline-block; width:10px; height:10px; background:var(--tier-max); border-radius:2px;"></span> Max</div>
+          </div>
+        </div>
+        <div style="overflow-x: auto;">
+          <div class="wbc-stage">
+            <div class="wbc-grid-container" id="wbcGrid"></div>
+            <div class="bar-chart-container" id="wbcChart"></div>
+          </div>
+        </div>
+        <div style="margin-top: 16px;">
+          <table id="wbcTable">
+            <thead>
+              <tr>
+                <th>Workflow Steps/Laps</th>
+                <th>Observations</th>
+                <th style="color:var(--tier-min);">Min</th>
+                <th style="color:var(--tier-avg);">Average</th>
+                <th style="color:var(--tier-max);">Max</th>
+                <th>Variance Span</th>
+              </tr>
+            </thead>
+            <tbody id="wbcMetricsBody"></tbody>
+            <tfoot id="wbcMetricsFoot" style="background:var(--bg-desktop); font-weight:bold; border-top:2px solid var(--border-color);"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle" onpointerdown="startWindowResize(event, 'win-wbc')" title="Resize">◢</div>
+  </div>
+
+</div>
+
+<!-- Ghost Companion -->
+<div class="ghost-float" id="ghostFloat" onpointerdown="startGhostDrag(event)" onclick="showGhostComment(event)" title="Drag me, or tap for a kind word">
+  <div class="ghost-bubble" id="ghostBubble"></div>
+  <img id="ghostFloatImg" src="" alt="Ghost">
+</div>
+
+<script>
+  // Stop tap targets from taking browser focus. Mobile browsers scroll the page (including
+  // the outer host page, when embedded in an iframe) to keep a newly-focused element in view,
+  // and keep re-snapping to that position as long as focus holds — this is what makes the top
+  // ribbon appear to get "stuck" behind the hosting site's banner and bounce back when scrolled.
+  // preventDefault() on mousedown blocks the focus-on-tap without blocking the click itself.
+  document.addEventListener('mousedown', function (e) {
+    const target = e.target.closest('button, .btn, .win-toggle-btn, .office-tab, [role="button"]');
+    if (target) e.preventDefault();
+  }, true);
+
+  const DEFAULT_CATEGORIES = [
+    "Enter Door",
+    "Speak to Greeter",
+    "Interact with Kiosk",
+    "Enter Info Desk Line",
+    "Exit Info Desk Line",
+    "Move to Lobby",
+    "Ticket Called",
+    "Arrive at Station",
+    "Exit Station"
+  ];
+
+  const TRANSACTION_TYPES = ["Short", "Long", "Class C/M", "CDL"];
+  const QUALIFIERS = ["Return to Pay", "2nd Verification", "Vision Test", "Knowledge Test"];
+
+  const DEFAULT_OFFICES = [
+    "Garland Mega Center",
+    "Dallas South Mega Center",
+    "Carrollton Mega Center",
+    "Fort Worth Mega Center",
+    "Houston-Spring Mega Center",
+    "Leon Valley Mega Center",
+    "Rosenberg Mega Center",
+    "Austin N. Lamar",
+    "Denton Office",
+    "Grand Prairie Office",
+    "Tyler Office",
+    "Lubbock Office",
+    "El Paso Scott Simpson"
+  ];
+
+  let appState = {
+    unitMode: 'both',
+    activeUser: "Auditor 1",
+    userList: ["Auditor 1", "Auditor 2", "Team Lead"],
+    officeDirectory: [...DEFAULT_OFFICES],
+    activeOfficeId: "GARLAND_COMPARE_MODE",
+    openOfficeTabs: ["GARLAND_COMPARE_MODE"],
+    offices: {},
+    windowLayouts: {},
+    currentLayoutKey: 'dualSplit',
+    settings: { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null }
+  };
+
+  let highestZ = 25;
+  let dragSrcType = null;
+  let dragSrcTimerId = null;
+  let dragSrcStepIdx = null;
+  let currentModalType = null;
+  let currentTimersSubTab = 'active';
+  let windowSavedGeometry = {};
+
+  function createBlankOfficeData() {
+    return {
+      date: new Date().toISOString().slice(0, 10),
+      globalCategories: [...DEFAULT_CATEGORIES],
+      observations: [],
+      timers: [],
+      completedTimers: [],
+      compareOfficeSelections: [],
+      compareOfficeDateRanges: {}
+    };
+  }
+
+  function getActiveOffice() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      if (!appState.offices['GARLAND_COMPARE_MODE']) {
+        appState.offices['GARLAND_COMPARE_MODE'] = createBlankOfficeData();
+      }
+      return appState.offices['GARLAND_COMPARE_MODE'];
+    }
+    if (!appState.offices[appState.activeOfficeId]) {
+      appState.offices[appState.activeOfficeId] = createBlankOfficeData();
+    }
+    const office = appState.offices[appState.activeOfficeId];
+    if (!office.date) office.date = new Date().toISOString().slice(0, 10);
+    return office;
+  }
+
+  function bringToFront(winId) {
+    highestZ++;
+    document.getElementById(winId).style.zIndex = highestZ;
+  }
+
+  function getFormattedTimeOfDay() {
+    const d = new Date();
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // --- Unified Timers Sub-Tab Switcher ---
+  function switchTimersSubTab(tabKey) {
+    currentTimersSubTab = tabKey;
+    const actView = document.getElementById('timers-view-active');
+    const compView = document.getElementById('timers-view-completed');
+    const btnAct = document.getElementById('subtab-active');
+    const btnComp = document.getElementById('subtab-completed');
+    const addBtn = document.getElementById('timersAddBtn');
+
+    if (tabKey === 'active') {
+      actView.style.display = 'block';
+      compView.style.display = 'none';
+      btnAct.classList.add('active');
+      btnComp.classList.remove('active');
+      if (addBtn) addBtn.style.display = 'inline-flex';
+    } else {
+      actView.style.display = 'none';
+      compView.style.display = 'block';
+      btnAct.classList.remove('active');
+      btnComp.classList.add('active');
+      if (addBtn) addBtn.style.display = 'none';
+    }
+  }
+
+  // --- Master Manage Lists Modal Logic ---
+  function openManagerModal(type) {
+    closeAllFlyouts();
+    currentModalType = type;
+    const modal = document.getElementById('listManagerModal');
+    const title = document.getElementById('managerModalTitle');
+    const input = document.getElementById('modalNewItemInput');
+
+    if (type === 'offices') {
+      title.innerText = "🏢 Manage Texas DPS Offices";
+      input.placeholder = "Add office name...";
+    } else if (type === 'steps') {
+      title.innerText = "📋 Manage Steps/Laps";
+      input.placeholder = "Add step/lap name...";
+    } else if (type === 'users') {
+      title.innerText = "👤 Manage Users/Auditors";
+      input.placeholder = "Add user name...";
+    }
+
+    renderModalList();
+    modal.classList.add('open');
+  }
+
+  function closeManagerModal() {
+    document.getElementById('listManagerModal').classList.remove('open');
+    currentModalType = null;
+  }
+
+  function renderModalList() {
+    const container = document.getElementById('modalListContainer');
+    let listData = [];
+
+    if (currentModalType === 'offices') listData = appState.officeDirectory;
+    else if (currentModalType === 'steps') listData = getActiveOffice().globalCategories;
+    else if (currentModalType === 'users') listData = appState.userList;
+
+    container.innerHTML = listData.map((item, idx) => `
+      <div style="display:flex; gap:6px; align-items:center; background:var(--bg-window-header); padding:6px 10px; border-radius:6px;">
+        <span style="font-size:0.75rem; color:var(--text-muted); width:20px;">${idx + 1}.</span>
+        <input type="text" value="${item}" onchange="modalEditItem(${idx}, this.value)" style="flex:1;" />
+        <button class="btn btn-danger btn-sm" onclick="modalDeleteItem(${idx})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function modalAddItem() {
+    const input = document.getElementById('modalNewItemInput');
+    const val = input.value.trim();
+    if (!val) return;
+
+    if (currentModalType === 'offices') {
+      if (!appState.officeDirectory.includes(val)) appState.officeDirectory.push(val);
+      openOfficeFromTabDropdown(val);
+    } else if (currentModalType === 'steps') {
+      const office = getActiveOffice();
+      office.globalCategories.push(val);
+      saveState();
+      refreshAllPanels();
+    } else if (currentModalType === 'users') {
+      if (!appState.userList.includes(val)) appState.userList.push(val);
+      saveState();
+      renderGlobalUserSelect();
+    }
+
+    input.value = '';
+    renderModalList();
+  }
+
+  function modalEditItem(idx, newVal) {
+    const val = newVal.trim();
+    if (!val) return;
+
+    if (currentModalType === 'offices') {
+      const oldName = appState.officeDirectory[idx];
+      appState.officeDirectory[idx] = val;
+      if (appState.offices[oldName]) {
+        appState.offices[val] = appState.offices[oldName];
+        delete appState.offices[oldName];
+      }
+      appState.openOfficeTabs = appState.openOfficeTabs.map(t => t === oldName ? val : t);
+      if (appState.activeOfficeId === oldName) appState.activeOfficeId = val;
+      saveState();
+      renderOfficeTabs();
+    } else if (currentModalType === 'steps') {
+      const office = getActiveOffice();
+      office.globalCategories[idx] = val;
+      saveState();
+      refreshAllPanels();
+    } else if (currentModalType === 'users') {
+      appState.userList[idx] = val;
+      saveState();
+      renderGlobalUserSelect();
+    }
+    renderModalList();
+  }
+
+  function modalDeleteItem(idx) {
+    if (currentModalType === 'offices') {
+      if (appState.officeDirectory.length <= 1) {
+        alert("Cannot delete the last remaining office.");
+        return;
+      }
+      const removed = appState.officeDirectory.splice(idx, 1)[0];
+      appState.openOfficeTabs = appState.openOfficeTabs.filter(t => t !== removed);
+      if (appState.activeOfficeId === removed) {
+        appState.activeOfficeId = appState.openOfficeTabs[0];
+      }
+      saveState();
+      renderOfficeTabs();
+      refreshAllPanels();
+    } else if (currentModalType === 'steps') {
+      const office = getActiveOffice();
+      if (office.globalCategories.length <= 1) {
+        alert("At least one step/lap is required.");
+        return;
+      }
+      office.globalCategories.splice(idx, 1);
+      saveState();
+      refreshAllPanels();
+    } else if (currentModalType === 'users') {
+      if (appState.userList.length <= 1) {
+        alert("At least one user is required.");
+        return;
+      }
+      const removed = appState.userList.splice(idx, 1)[0];
+      if (appState.activeUser === removed) appState.activeUser = appState.userList[0];
+      saveState();
+      renderGlobalUserSelect();
+    }
+    renderModalList();
+  }
+
+  // --- Add Office Modal Flow via "+" Button ---
+  function promptAddOfficeTab() {
+    currentModalType = 'add_office_tab';
+    const modal = document.getElementById('listManagerModal');
+    const title = document.getElementById('managerModalTitle');
+    const input = document.getElementById('modalNewItemInput');
+    title.innerText = "🏢 Open Office Tab";
+    input.placeholder = "Select or type office name...";
+    input.style.display = 'block';
+
+    const container = document.getElementById('modalListContainer');
+    const availableOffices = appState.officeDirectory.filter(o => !appState.openOfficeTabs.includes(o));
+
+    if (availableOffices.length === 0) {
+      container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:10px;">All available offices are currently open as tabs.</div>`;
+    } else {
+      container.innerHTML = availableOffices.map(oName => `
+        <div class="menu-action-item" style="justify-content:space-between;" onclick="openOfficeFromTabDropdown('${oName}'); closeManagerModal();">
+          <span>🏢 ${oName}</span>
+          <span style="color:var(--accent-blue); font-size:0.75rem;">+ Open</span>
+        </div>
+      `).join('');
+    }
+
+    modal.classList.add('open');
+  }
+
+  // Texas DPS Office Tabs & Ribbon 2
+  function openOfficeFromTabDropdown(officeName) {
+    if (!officeName) return;
+    if (!appState.offices[officeName]) {
+      appState.offices[officeName] = createBlankOfficeData();
+    }
+    if (!appState.openOfficeTabs.includes(officeName)) {
+      appState.openOfficeTabs.push(officeName);
+    }
+    appState.activeOfficeId = officeName;
+    saveState();
+    renderOfficeTabs();
+    applyPresetLayout('timingStation');
+    refreshAllPanels();
+  }
+
+  function renderOfficeTabs() {
+    const bar = document.getElementById('officeNavBar');
+    const office = getActiveOffice();
+    
+    if (!appState.openOfficeTabs.includes('GARLAND_COMPARE_MODE')) {
+      appState.openOfficeTabs.unshift('GARLAND_COMPARE_MODE');
+    }
+
+    let html = `<div class="tabs-scroll-area">`;
+    html += `
+      <div class="office-tab static-compare-tab ${appState.activeOfficeId === 'GARLAND_COMPARE_MODE' ? 'active' : ''}" onclick="selectOfficeTab('GARLAND_COMPARE_MODE')">
+        <span>📊 Compare Offices</span>
+      </div>
+    `;
+
+    html += appState.openOfficeTabs.filter(name => name !== 'GARLAND_COMPARE_MODE').map(name => `
+      <div class="office-tab ${name === appState.activeOfficeId ? 'active' : ''}" onclick="selectOfficeTab('${name}')">
+        <span>🏢 ${name}</span>
+        <button class="close-tab-btn" onclick="closeOfficeTab(event, '${name}')" title="Close tab">✕</button>
+      </div>
+    `).join('');
+
+    html += `<button class="tab-add-btn" onclick="promptAddOfficeTab()" title="Open new office tab">+</button>`;
+    html += `</div>`;
+
+    const isCompare = (appState.activeOfficeId === 'GARLAND_COMPARE_MODE');
+
+    let rightHtml = `<div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;">`;
+    rightHtml += `
+      <div class="date-picker-wrap">
+        <span>👤</span>
+        <select class="styled-select" id="globalUserSelect" onchange="changeActiveUser(this.value)" title="Switch Auditor" style="background:transparent; border:none; padding:0;"></select>
+      </div>
+    `;
+    if (isCompare) {
+      rightHtml += `
+        <span style="font-size:0.8rem; color:var(--accent-blue); font-weight:bold;">Multi-Office Comparison Mode</span>
+        <button class="btn btn-sm btn-primary" onclick="openCompareConfigModal()">⚙️ Choose Offices to Compare</button>
+      `;
+    } else {
+      rightHtml += `
+        <div class="date-picker-wrap">
+          <span>📅 Date:</span>
+          <input type="date" class="date-picker-input" id="officeDateInput" value="${office.date || new Date().toISOString().slice(0,10)}" onchange="updateOfficeDate(this.value)" title="Tab Active Date">
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="resetActiveOfficeData()" title="Clear active tab on this date">Clear Date Data</button>
+      `;
+    }
+    rightHtml += `</div>`;
+
+    bar.innerHTML = html + rightHtml;
+    renderGlobalUserSelect();
+  }
+
+  function updateOfficeDate(val) {
+    const office = getActiveOffice();
+    office.date = val;
+    saveState();
+    refreshAllPanels();
+  }
+
+  function selectOfficeTab(name) {
+    appState.activeOfficeId = name;
+    saveState();
+    renderOfficeTabs();
+    if (name === 'GARLAND_COMPARE_MODE') {
+      applyPresetLayout('dualSplit');
+    } else {
+      applyPresetLayout(appState.currentLayoutKey || 'timingStation');
+    }
+    refreshAllPanels();
+  }
+
+  function closeOfficeTab(e, name) {
+    e.stopPropagation();
+    if (name === 'GARLAND_COMPARE_MODE') return;
+    appState.openOfficeTabs = appState.openOfficeTabs.filter(tab => tab !== name);
+    if (appState.activeOfficeId === name) {
+      appState.activeOfficeId = appState.openOfficeTabs[0] || 'GARLAND_COMPARE_MODE';
+    }
+    saveState();
+    renderOfficeTabs();
+    refreshAllPanels();
+  }
+
+  function changeActiveUser(newVal) {
+    if (!newVal) return;
+    appState.activeUser = newVal;
+    saveState();
+    const sel = document.getElementById('globalUserSelect');
+    if (sel) sel.value = newVal;
+  }
+
+  function refreshAllPanels() {
+    renderTimers();
+    renderCompletedTimers();
+    renderCTMTable();
+    renderWBC();
+  }
+
+  // Compare Tab Office Selection Modal
+  function openCompareConfigModal() {
+    currentModalType = 'compare_offices';
+    const modal = document.getElementById('listManagerModal');
+    const title = document.getElementById('managerModalTitle');
+    const input = document.getElementById('modalNewItemInput');
+    title.innerText = "📊 Select Offices to Compare";
+    input.style.display = 'none';
+    renderCompareConfigList();
+    modal.classList.add('open');
+  }
+
+  function renderCompareConfigList() {
+    const container = document.getElementById('modalListContainer');
+    const office = getActiveOffice();
+    if (!office.compareOfficeSelections) office.compareOfficeSelections = [];
+    if (!office.compareOfficeDateRanges) office.compareOfficeDateRanges = {};
+
+    container.innerHTML = appState.officeDirectory.map(oName => {
+      const isChecked = office.compareOfficeSelections.includes(oName);
+      const range = office.compareOfficeDateRanges[oName] || {};
+      return `
+        <div style="background:var(--bg-window-header); padding:8px 10px; border-radius:6px; display:flex; flex-direction:column; gap:6px;">
+          <label style="display:flex; gap:8px; align-items:center; cursor:pointer;">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCompareOffice('${oName}', this.checked)" />
+            <span>🏢 ${oName}</span>
+          </label>
+          <div style="display:flex; gap:6px; align-items:center; padding-left:26px; ${isChecked ? '' : 'opacity:0.4;'}">
+            <span style="font-size:0.68rem; color:var(--text-muted); white-space:nowrap;">From</span>
+            <input type="date" ${isChecked ? '' : 'disabled'} value="${range.start || ''}" onchange="updateCompareOfficeRange('${oName}', 'start', this.value)" style="flex:1; min-width:0; font-size:0.75rem;" />
+            <span style="font-size:0.68rem; color:var(--text-muted); white-space:nowrap;">To</span>
+            <input type="date" ${isChecked ? '' : 'disabled'} value="${range.end || ''}" onchange="updateCompareOfficeRange('${oName}', 'end', this.value)" style="flex:1; min-width:0; font-size:0.75rem;" />
+            ${(range.start || range.end) ? `<button class="win-btn" title="Clear date range — include all dates for this office" onclick="clearCompareOfficeRange('${oName}')" style="flex-shrink:0;">✕</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleCompareOffice(oName, checked) {
+    const office = getActiveOffice();
+    if (!office.compareOfficeSelections) office.compareOfficeSelections = [];
+    if (checked) {
+      if (!office.compareOfficeSelections.includes(oName)) office.compareOfficeSelections.push(oName);
+    } else {
+      office.compareOfficeSelections = office.compareOfficeSelections.filter(n => n !== oName);
+    }
+    saveState();
+    renderCompareConfigList();
+    renderCTMTable();
+    renderWBC();
+  }
+
+  function updateCompareOfficeRange(oName, field, value) {
+    const office = getActiveOffice();
+    if (!office.compareOfficeDateRanges) office.compareOfficeDateRanges = {};
+    if (!office.compareOfficeDateRanges[oName]) office.compareOfficeDateRanges[oName] = { start: '', end: '' };
+    office.compareOfficeDateRanges[oName][field] = value;
+    saveState();
+    renderCompareConfigList();
+    renderCTMTable();
+    renderWBC();
+  }
+
+  function clearCompareOfficeRange(oName) {
+    const office = getActiveOffice();
+    if (office.compareOfficeDateRanges) delete office.compareOfficeDateRanges[oName];
+    saveState();
+    renderCompareConfigList();
+    renderCTMTable();
+    renderWBC();
+  }
+
+  // Flyout Menus
+  function toggleSnapMenu(e) {
+    toggleFlyout('snapFlyout', e);
+  }
+
+  function toggleToolsMenu(e) {
+    toggleFlyout('toolsFlyout', e);
+  }
+
+  // Opens the given flyout, closing any other open one first — and if the
+  // one clicked was already open, leaves everything closed (a real toggle).
+  function toggleFlyout(id, e) {
+    if (e) e.stopPropagation();
+    const el = document.getElementById(id);
+    const wasOpen = el.classList.contains('open');
+    closeAllFlyouts();
+    if (!wasOpen) el.classList.add('open');
+  }
+
+  function closeAllFlyouts() {
+    document.getElementById('snapFlyout').classList.remove('open');
+    document.getElementById('toolsFlyout').classList.remove('open');
+  }
+
+  // --- Settings Modal ---
+  function openSettingsModal() {
+    closeAllFlyouts();
+    document.getElementById('settingsModal').classList.add('open');
+    applySettingsUI();
+  }
+
+  function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('open');
+  }
+
+  function applySettingsUI() {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+    const s = appState.settings;
+    const tapSwitch = document.getElementById('settingTapToLapSwitch');
+    const lastSwitch = document.getElementById('settingLastLapStopsSwitch');
+    if (tapSwitch) {
+      tapSwitch.classList.toggle('on', !!s.tapToLap);
+      tapSwitch.setAttribute('aria-checked', !!s.tapToLap);
+    }
+    if (lastSwitch) {
+      lastSwitch.classList.toggle('on', !!s.lastLapStops);
+      lastSwitch.setAttribute('aria-checked', !!s.lastLapStops);
+    }
+    const ghostSwitch = document.getElementById('settingShowGhostSwitch');
+    const changeGhostBtn = document.getElementById('changeGhostBtn');
+    if (ghostSwitch) {
+      ghostSwitch.classList.toggle('on', !!s.showGhost);
+      ghostSwitch.setAttribute('aria-checked', !!s.showGhost);
+    }
+    if (changeGhostBtn) changeGhostBtn.style.display = s.showGhost ? '' : 'none';
+    renderGhost();
+  }
+
+  function toggleSetting(key) {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+    appState.settings[key] = !appState.settings[key];
+    saveState();
+    applySettingsUI();
+    renderTimers();
+  }
+
+  // --- Ghost Companion ---
+  const GHOST_FILES = [
+    'BillyButcher.png', 'BlackNoir.png', 'Castiel.png', 'Chucky.png', 'DarthVadar.png',
+    'Dean.png', 'Default.png', 'Demon.png', 'Demon2.png', 'EyeOfSauruman.png',
+    'FreddyKruger.png', 'Gandalf.png', 'Hobbit.png', 'It.png', 'JasonVorhees.png',
+    'KingTheoden.png', 'LukeSkywalker.png', 'MichaelMeyers.png', 'PrincessLeia.png',
+    'R2D2.png', 'Sam.png', 'Starlight.png', 'WalmartHomelander.png', 'Wraith.png'
+  ];
+
+  const GHOST_COMMENTS = {
+    BillyButcher: [
+      "Oi, you're doing a bang-up job — don't let anyone tell you otherwise.",
+      "Solid work, mate. Proper thorough, that.",
+      "You handled that like a right professional. Respect."
+    ],
+    Castiel: [
+      "I have observed your work. It is good.",
+      "Your diligence does not go unnoticed, even by an angel.",
+      "You carry today's work well. Be at peace."
+    ],
+    Chucky: [
+      "You're killer at this job — in the best way.",
+      "I've got my eye on you... and it's impressed.",
+      "Doll, you are crushing this audit."
+    ],
+    DarthVadar: [
+      "The Force is strong with your work ethic.",
+      "Impressive. Most impressive, in fact.",
+      "Your focus rivals that of a true master."
+    ],
+    Dean: [
+      "Nice work today — you've earned a slice of pie.",
+      "You handle pressure better than most hunters I know.",
+      "Solid hunt, solid audit. Same skill set, really."
+    ],
+    Default: [
+      "You're doing great today!",
+      "Boo! ...I mean, good job.",
+      "Keep it up, you're doing wonderfully."
+    ],
+    Demon: [
+      "You're doing devilishly good work.",
+      "Even I can't find anything to complain about — nice job.",
+      "Sinfully good effort today."
+    ],
+    Demon2: [
+      "Two demons agree: you're crushing it.",
+      "You made a believer out of me.",
+      "Impressively good work — didn't see that coming."
+    ],
+    EyeOfSauruman: [
+      "I see all — and what I see is excellent work.",
+      "My gaze rests on you, and I approve.",
+      "Even from afar, your effort is unmistakable."
+    ],
+    FreddyKruger: [
+      "You're the stuff dreams are made of — nice work.",
+      "Sweet dreams tonight, you've earned them.",
+      "You nailed it. No nightmares here, just good work."
+    ],
+    Gandalf: [
+      "You are more capable than you know.",
+      "A wise choice, taking such care in your work.",
+      "Even the smallest efforts change the course of the day. Well done."
+    ],
+    Hobbit: [
+      "You've got a good heart and a keen eye — well done.",
+      "Second breakfast is earned after work like that.",
+      "Small steps, steady pace — you're doing wonderfully."
+    ],
+    It: [
+      "You float above the rest — great work today.",
+      "Everyone down here thinks you're doing great.",
+      "Balloons and all, you're a natural at this."
+    ],
+    JasonVorhees: [
+      "Quiet, steady, relentless — just like your work ethic.",
+      "Camp's proud of you today.",
+      "You get the job done. Every time."
+    ],
+    KingTheoden: [
+      "Rise, for your work today has honored the house.",
+      "A noble effort, worthy of the Mark.",
+      "Your courage today did not go unnoticed."
+    ],
+    LukeSkywalker: [
+      "Trust your instincts — they're serving you well today.",
+      "You're stronger at this than you think.",
+      "The Force is with you, and so is good work."
+    ],
+    MichaelMeyers: [
+      "Steady. Focused. Unstoppable. That's you today.",
+      "Even silence can say 'well done.'",
+      "You showed up and got it done. That's all that matters."
+    ],
+    PrincessLeia: [
+      "You're our only hope for getting this done right — and you delivered.",
+      "Leadership looks good on you today.",
+      "Rebel or not, that was a job well done."
+    ],
+    R2D2: [
+      "*happy beeps* — translation: great job today!",
+      "Beep boop beep! (That means 'nicely done.')",
+      "Whirr-click! You're doing amazing."
+    ],
+    Sam: [
+      "You did your homework and it shows.",
+      "Thorough, careful, thoughtful — nice work today.",
+      "You found the pattern others would've missed."
+    ],
+    Starlight: [
+      "You shine brighter than you realize.",
+      "That's real heroism — showing up and doing it right.",
+      "Keep that light going, you're doing great."
+    ],
+    WalmartHomelander: [
+      "Bargain-brand hero, top-tier effort. Nice work.",
+      "You didn't need superpowers for that — just skill.",
+      "Budget cape, full-price performance. Well done."
+    ],
+    Wraith: [
+      "I drift nearby, and what I see pleases me — good work.",
+      "Even shadows notice good effort.",
+      "You've done well. Rest easy tonight."
+    ]
+  };
+
+  function ghostDisplayName(base) {
+    const spaced = base.replace(/([a-z0-9])([A-Z])/g, '$1 $2').trim();
+    return spaced.split(' ').map((w, i) => (i > 0 && /^(Of|The|And)$/.test(w)) ? w.toLowerCase() : w).join(' ');
+  }
+
+  function toggleGhostSetting() {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+    appState.settings.showGhost = !appState.settings.showGhost;
+    saveState();
+    applySettingsUI();
+    if (appState.settings.showGhost) {
+      openGhostPicker();
+    }
+  }
+
+  const GHOST_POSITIONS = [
+    { id: 'top-left', label: 'Top Left' },
+    { id: 'top-center', label: 'Top Center' },
+    { id: 'top-right', label: 'Top Right' },
+    { id: 'middle-left', label: 'Middle Left' },
+    { id: 'middle-right', label: 'Middle Right' },
+    { id: 'bottom-left', label: 'Bottom Left' },
+    { id: 'bottom-center', label: 'Bottom Center' },
+    { id: 'bottom-right', label: 'Bottom Right' }
+  ];
+
+  function openGhostPicker() {
+    closeAllFlyouts();
+    renderGhostPicker();
+    renderGhostPositionGrid();
+    document.getElementById('ghostPickerModal').classList.add('open');
+  }
+
+  function closeGhostPicker() {
+    document.getElementById('ghostPickerModal').classList.remove('open');
+  }
+
+  function renderGhostPicker() {
+    const grid = document.getElementById('ghostPickerGrid');
+    if (!grid) return;
+    const selected = appState.settings && appState.settings.selectedGhost;
+    grid.innerHTML = GHOST_FILES.map(f => {
+      const name = ghostDisplayName(f.replace(/\.png$/i, ''));
+      const sel = f === selected ? ' selected' : '';
+      return `<div class="ghost-picker-item${sel}" onclick="selectGhost('${f.replace(/'/g, "\\'")}')">
+        <img src="ghosts/${encodeURIComponent(f)}" alt="${name}">
+        <span>${name}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function selectGhost(file) {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+    appState.settings.selectedGhost = file;
+    saveState();
+    renderGhostPicker();
+    renderGhost();
+    closeGhostPicker();
+  }
+
+  function renderGhostPositionGrid() {
+    const grid = document.getElementById('ghostPosGrid');
+    if (!grid) return;
+    const selected = (appState.settings && appState.settings.ghostPosition) || 'bottom-right';
+    const cells = [
+      'top-left', 'top-center', 'top-right',
+      'middle-left', null, 'middle-right',
+      'bottom-left', 'bottom-center', 'bottom-right'
+    ];
+    grid.innerHTML = cells.map(pos => {
+      if (!pos) return '<div class="ghost-pos-blank"></div>';
+      const entry = GHOST_POSITIONS.find(p => p.id === pos);
+      const sel = pos === selected ? ' selected' : '';
+      return `<button class="ghost-pos-btn${sel}" data-pos="${pos}" title="${entry.label}" onclick="selectGhostPosition('${pos}')">
+        <span class="dot"></span>
+      </button>`;
+    }).join('');
+  }
+
+  function selectGhostPosition(pos) {
+    if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+    appState.settings.ghostPosition = pos;
+    appState.settings.ghostCustomPos = null;
+    saveState();
+    renderGhostPositionGrid();
+    renderGhost();
+  }
+
+  function clampGhostPos(left, top) {
+    const w = 44, h = 44, margin = 2;
+    return {
+      left: Math.max(margin, Math.min(left, window.innerWidth - w - margin)),
+      top: Math.max(margin, Math.min(top, window.innerHeight - h - margin))
+    };
+  }
+
+  function renderGhost() {
+    const s = appState.settings || {};
+    const float = document.getElementById('ghostFloat');
+    const img = document.getElementById('ghostFloatImg');
+    const bubble = document.getElementById('ghostBubble');
+    if (!float || !img) return;
+    const show = !!s.showGhost && !!s.selectedGhost;
+    float.classList.toggle('visible', show);
+    if (bubble) bubble.classList.remove('show');
+    if (s.ghostCustomPos) {
+      const p = clampGhostPos(s.ghostCustomPos.left, s.ghostCustomPos.top);
+      float.dataset.pos = 'custom';
+      float.style.left = p.left + 'px';
+      float.style.top = p.top + 'px';
+      float.style.right = 'auto';
+      float.style.bottom = 'auto';
+    } else {
+      float.dataset.pos = s.ghostPosition || 'bottom-right';
+      float.style.left = '';
+      float.style.top = '';
+      float.style.right = '';
+      float.style.bottom = '';
+    }
+    if (show) {
+      const name = ghostDisplayName(s.selectedGhost.replace(/\.png$/i, ''));
+      img.src = 'ghosts/' + encodeURIComponent(s.selectedGhost);
+      img.alt = name;
+      float.title = name;
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    if (appState.settings && appState.settings.ghostCustomPos) renderGhost();
+  });
+
+  // --- Ghost dragging — free placement anywhere on screen ---
+  let ghostDragState = null;
+  let ghostJustDragged = false;
+
+  function startGhostDrag(e) {
+    const float = document.getElementById('ghostFloat');
+    if (!float || !float.classList.contains('visible')) return;
+    const rect = float.getBoundingClientRect();
+    ghostDragState = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origLeft: rect.left,
+      origTop: rect.top,
+      moved: false
+    };
+    window.addEventListener('pointermove', onGhostDrag);
+    window.addEventListener('pointerup', endGhostDrag);
+  }
+
+  function onGhostDrag(e) {
+    if (!ghostDragState) return;
+    const dx = e.clientX - ghostDragState.startX;
+    const dy = e.clientY - ghostDragState.startY;
+    const float = document.getElementById('ghostFloat');
+    if (!ghostDragState.moved) {
+      if (Math.hypot(dx, dy) < 4) return;
+      ghostDragState.moved = true;
+      float.classList.add('dragging');
+      const bubble = document.getElementById('ghostBubble');
+      if (bubble) bubble.classList.remove('show');
+    }
+    const p = clampGhostPos(ghostDragState.origLeft + dx, ghostDragState.origTop + dy);
+    float.dataset.pos = 'custom';
+    float.style.left = p.left + 'px';
+    float.style.top = p.top + 'px';
+    float.style.right = 'auto';
+    float.style.bottom = 'auto';
+  }
+
+  function endGhostDrag() {
+    window.removeEventListener('pointermove', onGhostDrag);
+    window.removeEventListener('pointerup', endGhostDrag);
+    if (!ghostDragState) return;
+    const float = document.getElementById('ghostFloat');
+    if (ghostDragState.moved) {
+      float.classList.remove('dragging');
+      const rect = float.getBoundingClientRect();
+      if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+      appState.settings.ghostCustomPos = { left: rect.left, top: rect.top };
+      saveState();
+      ghostJustDragged = true;
+      setTimeout(() => { ghostJustDragged = false; }, 0);
+    }
+    ghostDragState = null;
+  }
+
+  function positionGhostBubble() {
+    const float = document.getElementById('ghostFloat');
+    const bubble = document.getElementById('ghostBubble');
+    if (!float || !bubble) return;
+    const fRect = float.getBoundingClientRect();
+    const gap = 10, margin = 8;
+    const bw = bubble.offsetWidth;
+    const bh = bubble.offsetHeight;
+
+    const spaceAbove = fRect.top;
+    const spaceBelow = window.innerHeight - fRect.bottom;
+    const below = spaceAbove < (bh + gap + margin) && spaceBelow >= spaceAbove;
+    bubble.classList.toggle('below', below);
+    bubble.style.top = below ? (fRect.height + gap) + 'px' : 'auto';
+    bubble.style.bottom = below ? 'auto' : (fRect.height + gap) + 'px';
+
+    let bubbleViewportLeft = fRect.right - bw;
+    if (bubbleViewportLeft < margin) bubbleViewportLeft = fRect.left;
+    if (bubbleViewportLeft + bw > window.innerWidth - margin) bubbleViewportLeft = window.innerWidth - margin - bw;
+    bubbleViewportLeft = Math.max(margin, bubbleViewportLeft);
+    bubble.style.left = (bubbleViewportLeft - fRect.left) + 'px';
+
+    const floatCenterViewport = fRect.left + fRect.width / 2;
+    let arrowLeft = floatCenterViewport - bubbleViewportLeft;
+    arrowLeft = Math.max(10, Math.min(arrowLeft, bw - 10));
+    bubble.style.setProperty('--arrow-left', arrowLeft + 'px');
+  }
+
+  let ghostBubbleTimer = null;
+  function showGhostComment(e) {
+    if (e) e.stopPropagation();
+    if (ghostJustDragged) return;
+    const s = appState.settings || {};
+    if (!s.selectedGhost) return;
+    const bubble = document.getElementById('ghostBubble');
+    if (!bubble) return;
+    const base = s.selectedGhost.replace(/\.png$/i, '');
+    let msg;
+    if (base === 'BlackNoir') {
+      msg = '...';
+    } else {
+      const pool = GHOST_COMMENTS[base] || GHOST_COMMENTS.Default;
+      msg = pool[Math.floor(Math.random() * pool.length)];
+    }
+    bubble.textContent = msg;
+    positionGhostBubble();
+    bubble.classList.add('show');
+    clearTimeout(ghostBubbleTimer);
+    ghostBubbleTimer = setTimeout(() => bubble.classList.remove('show'), 4000);
+  }
+
+  // --- Custom Confirm Modal (see markup comment for why this replaces window.confirm) ---
+  let pendingConfirmCallback = null;
+
+  function showConfirm(message, onConfirm) {
+    pendingConfirmCallback = onConfirm;
+    document.getElementById('confirmModalMessage').textContent = message;
+    document.getElementById('confirmModal').classList.add('open');
+  }
+
+  function closeConfirmModal(result) {
+    document.getElementById('confirmModal').classList.remove('open');
+    const cb = pendingConfirmCallback;
+    pendingConfirmCallback = null;
+    if (result && cb) cb();
+  }
+
+  function applyPresetLayout(layoutKey) {
+    closeAllFlyouts();
+    appState.currentLayoutKey = layoutKey;
+    saveState();
+
+    if (layoutKey === 'freeFloat') {
+      return; 
+    }
+
+    const desktop = document.getElementById('desktop');
+    const dW = desktop.clientWidth;
+    const dH = desktop.clientHeight;
+    const gap = 12;
+
+    const setWin = (id, x, y, w, h, show = true) => {
+      const win = document.getElementById(id);
+      const btn = document.getElementById('btn-' + id);
+      if (!win) return;
+      win.classList.remove('maximized');
+      const maxBtn = document.getElementById('max-btn-' + id);
+      if (maxBtn) maxBtn.classList.remove('is-maximized');
+
+      if (show) {
+        win.classList.remove('minimized');
+        if (btn) btn.classList.add('active');
+        win.style.left = `${Math.round(x)}px`;
+        win.style.top = `${Math.round(y)}px`;
+        win.style.width = `${Math.round(w)}px`;
+        win.style.height = `${Math.round(h)}px`;
+        bringToFront(id);
+      } else {
+        win.classList.add('minimized');
+        if (btn) btn.classList.remove('active');
+      }
+      saveWindowState(id);
+    };
+
+    switch (layoutKey) {
+      case 'dualSplit':
+        setWin('win-ctm', gap, gap, (dW * 0.5) - (gap * 1.5), dH - (gap * 2), true);
+        setWin('win-wbc', (dW * 0.5) + (gap * 0.5), gap, (dW * 0.5) - (gap * 1.5), dH - (gap * 2), true);
+        setWin('win-timers', 0, 0, 0, 0, false);
+        break;
+      case 'tripleSplit':
+        const colW = (dW - (gap * 4)) / 3;
+        setWin('win-timers', gap, gap, colW, dH - (gap * 2), true);
+        setWin('win-ctm', colW + (gap * 2), gap, colW, dH - (gap * 2), true);
+        setWin('win-wbc', (colW * 2) + (gap * 3), gap, colW, dH - (gap * 2), true);
+        break;
+      case 'analyticsFocus':
+        setWin('win-timers', gap, gap, (dW * 0.35) - gap, dH - (gap * 2), true);
+        setWin('win-wbc', (dW * 0.35) + gap, gap, (dW * 0.65) - (gap * 2), dH - (gap * 2), true);
+        setWin('win-ctm', 0, 0, 0, 0, false);
+        break;
+      case 'timingStation':
+        setWin('win-timers', gap, gap, dW - (gap * 2), dH - (gap * 2), true);
+        setWin('win-ctm', 0, 0, 0, 0, false);
+        setWin('win-wbc', 0, 0, 0, 0, false);
+        break;
+      case 'fullCascade':
+        const topH = (dH * 0.54) - gap;
+        const botH = (dH * 0.46) - (gap * 2);
+        const topHalfW = (dW - (gap * 3)) / 2;
+        setWin('win-timers', gap, gap, topHalfW, topH, true);
+        setWin('win-ctm', topHalfW + (gap * 2), gap, topHalfW, topH, true);
+        setWin('win-wbc', gap, topH + (gap * 2), dW - (gap * 2), botH, true);
+        break;
+      case 'fullCascadeInverse':
+      default:
+        const topFullH = (dH * 0.46) - gap;
+        const botHalfH = (dH * 0.54) - (gap * 2);
+        const botHalfW = (dW - (gap * 3)) / 2;
+        setWin('win-wbc', gap, gap, dW - (gap * 2), topFullH, true);
+        setWin('win-timers', gap, topFullH + (gap * 2), botHalfW, botHalfH, true);
+        setWin('win-ctm', botHalfW + (gap * 2), topFullH + (gap * 2), botHalfW, botHalfH, true);
+        break;
+    }
+  }
+
+  // Maximize / Restore Toggle
+  function toggleWindowMaximize(winId) {
+    const win = document.getElementById(winId);
+    const maxBtn = document.getElementById('max-btn-' + winId);
+    bringToFront(winId);
+
+    if (!win.classList.contains('maximized')) {
+      windowSavedGeometry[winId] = {
+        left: win.style.left,
+        top: win.style.top,
+        width: win.style.width,
+        height: win.style.height
+      };
+      win.classList.add('maximized');
+      if (maxBtn) maxBtn.classList.add('is-maximized');
+    } else {
+      win.classList.remove('maximized');
+      const geom = windowSavedGeometry[winId];
+      if (geom) {
+        win.style.left = geom.left;
+        win.style.top = geom.top;
+        win.style.width = geom.width;
+        win.style.height = geom.height;
+      }
+      if (maxBtn) maxBtn.classList.remove('is-maximized');
+    }
+    saveWindowState(winId);
+  }
+
+  // Window Drag & Resize with Magnetic Snapping
+  let activeDragWin = null;
+  let dragOffset = { x: 0, y: 0 };
+  const SNAP_THRESHOLD = 15;
+
+  function startWindowDrag(e, winId) {
+    if (document.body.classList.contains('phone-mode')) return;
+    const win = document.getElementById(winId);
+    if (win.classList.contains('maximized')) return;
+    if (e.target.closest('.win-btn') || e.target.closest('.btn') || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    bringToFront(winId);
+    activeDragWin = win;
+    activeDragWin.classList.add('dragging-window');
+    const rect = activeDragWin.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+    window.addEventListener('pointermove', onWindowDrag);
+    window.addEventListener('pointerup', endWindowDrag);
+  }
+
+  function onWindowDrag(e) {
+    if (!activeDragWin) return;
+    const desktopRect = document.getElementById('desktop').getBoundingClientRect();
+    let left = e.clientX - desktopRect.left - dragOffset.x;
+    let top = e.clientY - desktopRect.top - dragOffset.y;
+    left = Math.max(0, Math.min(left, desktopRect.width - 100));
+    top = Math.max(0, Math.min(top, desktopRect.height - 40));
+
+    const curRect = {
+      left: left,
+      top: top,
+      right: left + activeDragWin.offsetWidth,
+      bottom: top + activeDragWin.offsetHeight
+    };
+
+    const guideH = document.getElementById('guideH');
+    const guideV = document.getElementById('guideV');
+    guideH.style.display = 'none';
+    guideV.style.display = 'none';
+
+    const otherWins = document.querySelectorAll('.floating-window');
+    otherWins.forEach(win => {
+      if (win === activeDragWin || win.classList.contains('minimized')) return;
+      const oRect = {
+        left: win.offsetLeft,
+        top: win.offsetTop,
+        right: win.offsetLeft + win.offsetWidth,
+        bottom: win.offsetTop + win.offsetHeight
+      };
+
+      if (Math.abs(curRect.left - oRect.right) < SNAP_THRESHOLD) {
+        left = oRect.right;
+        guideV.style.left = left + 'px';
+        guideV.style.top = Math.min(curRect.top, oRect.top) + 'px';
+        guideV.style.height = (Math.max(curRect.bottom, oRect.bottom) - Math.min(curRect.top, oRect.top)) + 'px';
+        guideV.style.display = 'block';
+      } else if (Math.abs(curRect.right - oRect.left) < SNAP_THRESHOLD) {
+        left = oRect.left - activeDragWin.offsetWidth;
+        guideV.style.left = oRect.left + 'px';
+        guideV.style.top = Math.min(curRect.top, oRect.top) + 'px';
+        guideV.style.height = (Math.max(curRect.bottom, oRect.bottom) - Math.min(curRect.top, oRect.top)) + 'px';
+        guideV.style.display = 'block';
+      } else if (Math.abs(curRect.left - oRect.left) < SNAP_THRESHOLD) {
+        left = oRect.left;
+        guideV.style.left = left + 'px';
+        guideV.style.top = Math.min(curRect.top, oRect.top) + 'px';
+        guideV.style.height = (Math.max(curRect.bottom, oRect.bottom) - Math.min(curRect.top, oRect.top)) + 'px';
+        guideV.style.display = 'block';
+      } else if (Math.abs(curRect.right - oRect.right) < SNAP_THRESHOLD) {
+        left = oRect.right - activeDragWin.offsetWidth;
+        guideV.style.left = oRect.right + 'px';
+        guideV.style.top = Math.min(curRect.top, oRect.top) + 'px';
+        guideV.style.height = (Math.max(curRect.bottom, oRect.bottom) - Math.min(curRect.top, oRect.top)) + 'px';
+        guideV.style.display = 'block';
+      }
+
+      if (Math.abs(curRect.top - oRect.bottom) < SNAP_THRESHOLD) {
+        top = oRect.bottom;
+        guideH.style.top = top + 'px';
+        guideH.style.left = Math.min(left, oRect.left) + 'px';
+        guideH.style.width = (Math.max(curRect.right, oRect.right) - Math.min(left, oRect.left)) + 'px';
+        guideH.style.display = 'block';
+      } else if (Math.abs(curRect.bottom - oRect.top) < SNAP_THRESHOLD) {
+        top = oRect.top - activeDragWin.offsetHeight;
+        guideH.style.top = oRect.top + 'px';
+        guideH.style.left = Math.min(left, oRect.left) + 'px';
+        guideH.style.width = (Math.max(curRect.right, oRect.right) - Math.min(left, oRect.left)) + 'px';
+        guideH.style.display = 'block';
+      } else if (Math.abs(curRect.top - oRect.top) < SNAP_THRESHOLD) {
+        top = oRect.top;
+        guideH.style.top = top + 'px';
+        guideH.style.left = Math.min(left, oRect.left) + 'px';
+        guideH.style.width = (Math.max(curRect.right, oRect.right) - Math.min(left, oRect.left)) + 'px';
+        guideH.style.display = 'block';
+      } else if (Math.abs(curRect.bottom - oRect.bottom) < SNAP_THRESHOLD) {
+        top = oRect.bottom - activeDragWin.offsetHeight;
+        guideH.style.top = oRect.bottom + 'px';
+        guideH.style.left = Math.min(left, oRect.left) + 'px';
+        guideH.style.width = (Math.max(curRect.right, oRect.right) - Math.min(left, oRect.left)) + 'px';
+        guideH.style.display = 'block';
+      }
+    });
+
+    activeDragWin.style.left = left + 'px';
+    activeDragWin.style.top = top + 'px';
+  }
+
+  function endWindowDrag() {
+    document.getElementById('guideH').style.display = 'none';
+    document.getElementById('guideV').style.display = 'none';
+    if (activeDragWin) {
+      activeDragWin.classList.remove('dragging-window');
+      saveWindowState(activeDragWin.id);
+      activeDragWin = null;
+    }
+    window.removeEventListener('pointermove', onWindowDrag);
+    window.removeEventListener('pointerup', endWindowDrag);
+  }
+
+  let activeResizeWin = null;
+  let startDims = { w: 0, h: 0, x: 0, y: 0 };
+
+  function startWindowResize(e, winId) {
+    if (document.body.classList.contains('phone-mode')) return;
+    const win = document.getElementById(winId);
+    if (win.classList.contains('maximized')) return;
+    e.stopPropagation();
+    bringToFront(winId);
+    activeResizeWin = win;
+    activeResizeWin.classList.add('resizing-window');
+    startDims.w = activeResizeWin.offsetWidth;
+    startDims.h = activeResizeWin.offsetHeight;
+    startDims.x = e.clientX;
+    startDims.y = e.clientY;
+    window.addEventListener('pointermove', onWindowResize);
+    window.addEventListener('pointerup', endWindowResize);
+  }
+
+  function onWindowResize(e) {
+    if (!activeResizeWin) return;
+    const newWidth = Math.max(320, startDims.w + (e.clientX - startDims.x));
+    const newHeight = Math.max(220, startDims.h + (e.clientY - startDims.y));
+    activeResizeWin.style.width = newWidth + 'px';
+    activeResizeWin.style.height = newHeight + 'px';
+  }
+
+  function endWindowResize() {
+    if (activeResizeWin) {
+      activeResizeWin.classList.remove('resizing-window');
+      saveWindowState(activeResizeWin.id);
+      activeResizeWin = null;
+    }
+    window.removeEventListener('pointermove', onWindowResize);
+    window.removeEventListener('pointerup', endWindowResize);
+  }
+
+  function toggleWindowVisible(winId) {
+    const win = document.getElementById(winId);
+    const btn = document.getElementById('btn-' + winId);
+    win.classList.toggle('minimized');
+    if (!win.classList.contains('minimized')) {
+      bringToFront(winId);
+      if (btn) btn.classList.add('active');
+    } else {
+      if (btn) btn.classList.remove('active');
+    }
+    saveWindowState(winId);
+  }
+
+  function saveWindowState(winId) {
+    const win = document.getElementById(winId);
+    appState.windowLayouts[winId] = {
+      left: win.style.left,
+      top: win.style.top,
+      width: win.style.width,
+      height: win.style.height,
+      minimized: win.classList.contains('minimized'),
+      maximized: win.classList.contains('maximized')
+    };
+    saveState();
+  }
+
+  function restoreWindowStates() {
+    if (!appState.windowLayouts) return;
+    Object.keys(appState.windowLayouts).forEach(winId => {
+      const cfg = appState.windowLayouts[winId];
+      const win = document.getElementById(winId);
+      const btn = document.getElementById('btn-' + winId);
+      const maxBtn = document.getElementById('max-btn-' + winId);
+      if (win && cfg) {
+        if (cfg.left) win.style.left = cfg.left;
+        if (cfg.top) win.style.top = cfg.top;
+        if (cfg.width) win.style.width = cfg.width;
+        if (cfg.height) win.style.height = cfg.height;
+        if (cfg.minimized) {
+          win.classList.add('minimized');
+          if (btn) btn.classList.remove('active');
+        } else {
+          win.classList.remove('minimized');
+          if (btn) btn.classList.add('active');
+        }
+        if (cfg.maximized) {
+          win.classList.add('maximized');
+          if (maxBtn) maxBtn.classList.add('is-maximized');
+        }
+      }
+    });
+  }
+
+  // --- Device Mode: Desktop/iPad (floating windows) vs Phone (stacked, scrollable) ---
+  function detectDefaultDeviceMode() {
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const minSide = Math.min(window.innerWidth, window.innerHeight);
+    return (isTouch && minSide < 600) ? 'phone' : 'desktop';
+  }
+
+  function setDeviceMode(mode) {
+    appState.deviceMode = mode;
+    saveState();
+    applyDeviceMode();
+  }
+
+  function toggleDeviceMode() {
+    const current = appState.deviceMode || 'desktop';
+    setDeviceMode(current === 'phone' ? 'desktop' : 'phone');
+  }
+
+  function applyDeviceMode() {
+    const mode = appState.deviceMode || 'desktop';
+    document.body.classList.toggle('phone-mode', mode === 'phone');
+
+    const switchEl = document.getElementById('deviceModeSwitch');
+    if (switchEl) {
+      switchEl.classList.toggle('on', mode === 'phone');
+      switchEl.setAttribute('aria-checked', mode === 'phone');
+    }
+    const desktopLabel = document.getElementById('deviceModeLabelDesktop');
+    const phoneLabel = document.getElementById('deviceModeLabelPhone');
+    if (desktopLabel) desktopLabel.classList.toggle('active-side', mode !== 'phone');
+    if (phoneLabel) phoneLabel.classList.toggle('active-side', mode === 'phone');
+
+    if (mode === 'phone') {
+      // Timers are the priority on a phone — make sure they're visible, not minimized.
+      const timersWin = document.getElementById('win-timers');
+      if (timersWin && timersWin.classList.contains('minimized')) {
+        toggleWindowVisible('win-timers');
+      }
+    }
+  }
+
+  // --- Collapsible top ribbons (frees up vertical space, esp. in phone portrait) ---
+  function toggleRibbon() {
+    closeAllFlyouts();
+    appState.ribbonHidden = !appState.ribbonHidden;
+    saveState();
+    applyRibbonVisibility();
+  }
+
+  function applyRibbonVisibility() {
+    document.body.classList.toggle('ribbon-hidden', !!appState.ribbonHidden);
+  }
+
+  // Persistence & Formatter
+  function saveState() {
+    try {
+      localStorage.setItem('CTM_WBC_APP_DATA_V191', JSON.stringify(appState));
+    } catch (e) {
+      console.error('Failed to save app state to localStorage:', e);
+    }
+  }
+
+  function loadState() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem('CTM_WBC_APP_DATA_V191');
+    } catch (e) {
+      console.error('Failed to read app state from localStorage:', e);
+    }
+    if (raw) {
+      try {
+        appState = JSON.parse(raw);
+        if (!appState.unitMode) appState.unitMode = 'both';
+        if (!appState.userList) appState.userList = ["Auditor 1", "Auditor 2", "Team Lead"];
+        if (!appState.activeUser) appState.activeUser = "Auditor 1";
+        if (!appState.officeDirectory) appState.officeDirectory = [...DEFAULT_OFFICES];
+        if (!appState.openOfficeTabs || appState.openOfficeTabs.length === 0) {
+          appState.openOfficeTabs = ["GARLAND_COMPARE_MODE"];
+          appState.activeOfficeId = "GARLAND_COMPARE_MODE";
+        }
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+        if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
+        if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
+      } catch (e) {
+        console.error("Local load failed", e);
+        initDefaultApp();
+      }
+    } else {
+      initDefaultApp();
+    }
+  }
+
+  function initDefaultApp() {
+    appState.offices = {};
+    appState.officeDirectory = [...DEFAULT_OFFICES];
+    appState.openOfficeTabs = ["GARLAND_COMPARE_MODE"];
+    appState.activeOfficeId = "GARLAND_COMPARE_MODE";
+  }
+
+  function formatTimeVal(seconds) {
+    if (seconds === undefined || seconds === null || isNaN(seconds)) return '--';
+    const s = parseFloat(seconds.toFixed(1));
+    const m = (seconds / 60).toFixed(2);
+
+    switch (appState.unitMode) {
+      case 'seconds': return `${s}s`;
+      case 'minutes': return `${m}m`;
+      case 'both':
+      default: return `${s}s (${m}m)`;
+    }
+  }
+
+  function changeUnitMode(newMode) {
+    appState.unitMode = newMode;
+    saveState();
+    refreshAllPanels();
+  }
+
+  // Test Data Generator
+  function generateTestSampleData() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      alert("Please select a specific office tab to generate test data.");
+      return;
+    }
+    const office = getActiveOffice();
+    const realisticBaseDurations = {
+      "Enter Door": { min: 4, avg: 7.5, max: 13 },
+      "Speak to Greeter": { min: 12, avg: 24, max: 46 },
+      "Interact with Kiosk": { min: 22, avg: 48, max: 85 },
+      "Enter Info Desk Line": { min: 45, avg: 115, max: 220 },
+      "Exit Info Desk Line": { min: 16, avg: 36, max: 68 },
+      "Move to Lobby": { min: 8, avg: 19, max: 34 },
+      "Ticket Called": { min: 95, avg: 250, max: 480 },
+      "Arrive at Station": { min: 6, avg: 15, max: 30 },
+      "Exit Station": { min: 65, avg: 180, max: 320 }
+    };
+
+    const sampleObs = [];
+    const sampleCompleted = [];
+
+    for (let i = 1; i <= 10; i++) {
+      const vals = {};
+      const laps = [];
+      let totalTime = 0;
+      const startTimeStr = getFormattedTimeOfDay();
+
+      office.globalCategories.forEach(cat => {
+        const conf = realisticBaseDurations[cat] || { min: 5, avg: 20, max: 40 };
+        const spread = conf.max - conf.min;
+        const val = parseFloat((conf.min + (Math.random() * spread)).toFixed(1));
+        vals[cat] = val;
+        laps.push({ stepName: cat, duration: val, timeOfDay: getFormattedTimeOfDay() });
+        totalTime += val;
+      });
+
+      const endTimeStr = getFormattedTimeOfDay();
+      const obsId = Date.now() + i;
+      const sampleTxType = TRANSACTION_TYPES[Math.floor(Math.random() * TRANSACTION_TYPES.length)];
+      const sampleQualifiers = QUALIFIERS.filter(() => Math.random() < 0.2);
+
+      sampleObs.push({
+        id: obsId,
+        name: `Customer #${i}`,
+        user: appState.activeUser,
+        date: office.date || new Date().toISOString().slice(0, 10),
+        startTimeStr: startTimeStr,
+        endTimeStr: endTimeStr,
+        txType: sampleTxType,
+        qualifiers: sampleQualifiers,
+        values: vals
+      });
+
+      sampleCompleted.push({
+        id: obsId,
+        name: `Customer #${i}`,
+        user: appState.activeUser,
+        date: office.date || new Date().toISOString().slice(0, 10),
+        startTimeStr: startTimeStr,
+        endTimeStr: endTimeStr,
+        elapsed: totalTime * 1000,
+        steps: [...office.globalCategories],
+        recordedLaps: laps,
+        expanded: false,
+        txType: sampleTxType,
+        qualifiers: sampleQualifiers
+      });
+    }
+
+    if (!office.observations) office.observations = [];
+    if (!office.completedTimers) office.completedTimers = [];
+
+    office.observations.push(...sampleObs);
+    office.completedTimers.unshift(...sampleCompleted);
+    saveState();
+    refreshAllPanels();
+  }
+
+  // Active Timers Logic
+  function addTimerCard() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
+    const office = getActiveOffice();
+    const timerId = Date.now() + Math.floor(Math.random() * 1000);
+    const newTimer = {
+      id: timerId,
+      name: `Subject #${(office.observations?.length || 0) + (office.timers?.length || 0) + (office.completedTimers?.length || 0) + 1}`,
+      user: appState.activeUser,
+      date: office.date || new Date().toISOString().slice(0, 10),
+      running: false,
+      startTime: 0,
+      startTimeStr: null,
+      endTimeStr: null,
+      elapsed: 0,
+      stepIndex: 0,
+      lastLapTimestamp: 0,
+      expanded: false,
+      steps: [...office.globalCategories],
+      recordedLaps: [],
+      notes: '',
+      notesExpanded: false,
+      txType: TRANSACTION_TYPES[0],
+      qualifiers: [],
+      cardWidth: null,
+      cardHeight: null
+    };
+    if (!office.timers) office.timers = [];
+    office.timers.push(newTimer);
+    saveState();
+    renderTimers();
+  }
+
+  function toggleTimer(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (!timer) return;
+
+    if (!timer.running) {
+      timer.running = true;
+      if (!timer.startTimeStr) {
+        timer.startTimeStr = getFormattedTimeOfDay();
+      }
+      timer.startTime = performance.now() - timer.elapsed;
+      if (timer.stepIndex === 0 && timer.elapsed === 0) {
+        timer.lastLapTimestamp = timer.startTime;
+      }
+    } else {
+      timer.running = false;
+      timer.elapsed = performance.now() - timer.startTime;
+    }
+    saveState();
+    renderTimers();
+  }
+
+  // Routes the Lap button (and tap-to-lap) to either record a lap, or — when
+  // "Last Lap Stops Timer" is enabled and this is the final step — stop the timer.
+  function handleLapButtonClick(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (!timer || !timer.running) return;
+
+    const finalStepName = office.globalCategories[office.globalCategories.length - 1] || "Exit Station";
+    const activeStepName = timer.steps[timer.stepIndex] || "Finished";
+    const isLastStep = (activeStepName === finalStepName) || (timer.stepIndex >= office.globalCategories.length - 1);
+
+    if (appState.settings && appState.settings.lastLapStops && isLastStep) {
+      stopTimer(id);
+    } else {
+      recordLap(id);
+    }
+  }
+
+  function handleStopwatchTap(id) {
+    if (!appState.settings || !appState.settings.tapToLap) return;
+    handleLapButtonClick(id);
+  }
+
+  function recordLap(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (!timer || !timer.running) return;
+
+    const currentTotal = performance.now() - timer.startTime;
+    const stepDuration = (currentTotal - (timer.lastLapTimestamp - timer.startTime)) / 1000;
+    const currentStepName = timer.steps[timer.stepIndex] || `Step ${timer.stepIndex + 1}`;
+
+    timer.recordedLaps.push({
+      stepName: currentStepName,
+      duration: parseFloat(stepDuration.toFixed(2)),
+      timeOfDay: getFormattedTimeOfDay()
+    });
+
+    timer.lastLapTimestamp = timer.startTime + currentTotal;
+    timer.stepIndex++;
+
+    if (timer.stepIndex >= timer.steps.length) {
+      const nextCat = office.globalCategories[timer.stepIndex % office.globalCategories.length] || `Step ${timer.stepIndex + 1}`;
+      timer.steps.push(nextCat);
+    }
+    saveState();
+    renderTimers();
+  }
+
+  function stopTimer(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (!timer) return;
+
+    const wasRunning = timer.running;
+    const currentTotal = wasRunning ? (performance.now() - timer.startTime) : timer.elapsed;
+    timer.running = false;
+    timer.elapsed = currentTotal;
+    timer.endTimeStr = getFormattedTimeOfDay();
+
+    if (timer.recordedLaps.length < timer.steps.length && timer.lastLapTimestamp > 0) {
+      const remainingSec = (currentTotal - (timer.lastLapTimestamp - (wasRunning ? timer.startTime : 0))) / 1000;
+      if (remainingSec > 0.1 && timer.steps[timer.stepIndex]) {
+        timer.recordedLaps.push({
+          stepName: timer.steps[timer.stepIndex],
+          duration: parseFloat(remainingSec.toFixed(2)),
+          timeOfDay: getFormattedTimeOfDay()
+        });
+      }
+    }
+
+    const valuesObj = {};
+    timer.recordedLaps.forEach(lap => {
+      valuesObj[lap.stepName] = lap.duration;
+    });
+
+    if (!office.observations) office.observations = [];
+    if (!office.completedTimers) office.completedTimers = [];
+
+    office.observations.push({
+      id: timer.id,
+      name: timer.name,
+      user: timer.user || appState.activeUser,
+      date: timer.date || office.date,
+      startTimeStr: timer.startTimeStr || getFormattedTimeOfDay(),
+      endTimeStr: timer.endTimeStr,
+      txType: timer.txType || TRANSACTION_TYPES[0],
+      qualifiers: [...(timer.qualifiers || [])],
+      values: valuesObj
+    });
+
+    office.completedTimers.unshift({
+      id: timer.id,
+      name: timer.name,
+      user: timer.user || appState.activeUser,
+      date: timer.date || office.date,
+      startTimeStr: timer.startTimeStr || getFormattedTimeOfDay(),
+      endTimeStr: timer.endTimeStr,
+      elapsed: timer.elapsed,
+      steps: [...timer.steps],
+      recordedLaps: [...timer.recordedLaps],
+      expanded: false,
+      txType: timer.txType || TRANSACTION_TYPES[0],
+      qualifiers: [...(timer.qualifiers || [])],
+      notes: timer.notes || ''
+    });
+
+    office.timers = office.timers.filter(t => String(t.id) !== String(timer.id));
+    saveState();
+    refreshAllPanels();
+  }
+
+  function removeTimer(id) {
+    const office = getActiveOffice();
+    if (office.timers) {
+      office.timers = office.timers.filter(t => String(t.id) !== String(id));
+      saveState();
+      renderTimers();
+    }
+  }
+
+  function toggleTimerDetails(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.expanded = !timer.expanded;
+      saveState();
+      renderTimers();
+    }
+  }
+
+  function toggleTimerNotes(id) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.notesExpanded = !timer.notesExpanded;
+      saveState();
+      renderTimers();
+    }
+  }
+
+  function updateTimerNotes(id, val) {
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.notes = val;
+      saveState();
+    }
+  }
+
+  function updateTimerTxType(id, val, checked) {
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      if (checked) {
+        timer.txType = val;
+        saveState();
+      }
+      renderTimers();
+    }
+  }
+
+  function updateTimerQualifier(id, qualifier, checked) {
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      if (!timer.qualifiers) timer.qualifiers = [];
+      if (checked) {
+        if (!timer.qualifiers.includes(qualifier)) timer.qualifiers.push(qualifier);
+      } else {
+        timer.qualifiers = timer.qualifiers.filter(q => q !== qualifier);
+      }
+      saveState();
+    }
+  }
+
+  // --- Timer Card Reordering (drag & drop) ---
+  function handleTimerCardDragStart(e, timerId) {
+    e.stopPropagation();
+    dragSrcType = 'TIMER_CARD';
+    dragSrcTimerId = String(timerId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.closest('.timer-card').classList.add('dragging');
+  }
+
+  function handleTimerCardDragOver(e, timerId) {
+    if (dragSrcType !== 'TIMER_CARD') return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (String(timerId) === dragSrcTimerId) return;
+    const card = e.target.closest('.timer-card');
+    if (card) card.classList.add('drag-over');
+  }
+
+  function handleTimerCardDragLeave(e) {
+    const card = e.target.closest('.timer-card');
+    if (card) card.classList.remove('drag-over');
+  }
+
+  function handleTimerCardDrop(e, targetTimerId) {
+    if (dragSrcType !== 'TIMER_CARD') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const card = e.target.closest('.timer-card');
+    if (card) card.classList.remove('drag-over');
+    if (dragSrcTimerId === String(targetTimerId)) return;
+
+    const office = getActiveOffice();
+    const list = office.timers;
+    if (!list) return;
+    const srcIdx = list.findIndex(t => String(t.id) === dragSrcTimerId);
+    const targetIdx = list.findIndex(t => String(t.id) === String(targetTimerId));
+    if (srcIdx === -1 || targetIdx === -1) return;
+
+    const moved = list.splice(srcIdx, 1)[0];
+    list.splice(targetIdx, 0, moved);
+    saveState();
+    renderTimers();
+  }
+
+  // --- Timer Card Resizing (manual drag) ---
+  let activeResizeTimerId = null;
+  let timerResizeStartDims = { w: 0, h: 0, x: 0, y: 0 };
+
+  function startTimerCardResize(e, timerId) {
+    e.stopPropagation();
+    e.preventDefault();
+    const card = e.target.closest('.timer-card');
+    if (!card) return;
+    activeResizeTimerId = String(timerId);
+    timerResizeStartDims.w = card.offsetWidth;
+    timerResizeStartDims.h = card.offsetHeight;
+    timerResizeStartDims.x = e.clientX;
+    timerResizeStartDims.y = e.clientY;
+    window.addEventListener('pointermove', onTimerCardResize);
+    window.addEventListener('pointerup', endTimerCardResize);
+  }
+
+  function onTimerCardResize(e) {
+    if (!activeResizeTimerId) return;
+    const card = document.querySelector(`.timer-card[data-timer-id="${activeResizeTimerId}"]`);
+    if (!card) return;
+    const newWidth = Math.max(220, timerResizeStartDims.w + (e.clientX - timerResizeStartDims.x));
+    const newHeight = Math.max(160, timerResizeStartDims.h + (e.clientY - timerResizeStartDims.y));
+    card.style.width = newWidth + 'px';
+    card.style.height = newHeight + 'px';
+    card.style.overflowY = 'auto';
+  }
+
+  function endTimerCardResize() {
+    window.removeEventListener('pointermove', onTimerCardResize);
+    window.removeEventListener('pointerup', endTimerCardResize);
+    if (!activeResizeTimerId) return;
+    const card = document.querySelector(`.timer-card[data-timer-id="${activeResizeTimerId}"]`);
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === activeResizeTimerId);
+    if (timer && card) {
+      timer.cardWidth = card.offsetWidth;
+      timer.cardHeight = card.offsetHeight;
+      saveState();
+    }
+    activeResizeTimerId = null;
+  }
+
+  function changeTimerStep(timerId, stepIdx, newCategoryName) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(timerId));
+    if (!timer) return;
+    timer.steps[stepIdx] = newCategoryName;
+    if (timer.recordedLaps[stepIdx]) {
+      timer.recordedLaps[stepIdx].stepName = newCategoryName;
+    }
+    saveState();
+    renderTimers();
+  }
+
+  function addStepToTimer(timerId) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(timerId));
+    if (timer) {
+      timer.steps.push(office.globalCategories[0] || "Custom Step");
+      saveState();
+      renderTimers();
+    }
+  }
+
+  function removeStepFromTimer(timerId, stepIdx) {
+    const office = getActiveOffice();
+    const timer = office.timers.find(t => String(t.id) === String(timerId));
+    if (timer && timer.steps.length > 1) {
+      timer.steps.splice(stepIdx, 1);
+      if (timer.recordedLaps[stepIdx]) timer.recordedLaps.splice(stepIdx, 1);
+      if (timer.stepIndex >= timer.steps.length) timer.stepIndex = timer.steps.length - 1;
+      saveState();
+      renderTimers();
+    }
+  }
+
+  function updateTimerName(id, val) {
+    const office = getActiveOffice();
+    const timer = office.timers?.find(t => String(t.id) === String(id));
+    if (timer) {
+      timer.name = val;
+      saveState();
+    }
+  }
+
+  function formatDuration(ms) {
+    const totalSecs = Math.floor(ms / 1000);
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs % 60;
+    const tenths = Math.floor((ms % 1000) / 100);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${tenths}`;
+  }
+
+  setInterval(() => {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
+    const office = getActiveOffice();
+    if (office && office.timers) {
+      office.timers.forEach(timer => {
+        if (timer.running) {
+          const el = document.getElementById(`display-${timer.id}`);
+          const totalEl = document.getElementById(`total-pill-${timer.id}`);
+          const currentTotal = performance.now() - timer.startTime;
+          if (el) el.innerText = formatDuration(currentTotal);
+          if (totalEl) totalEl.innerText = formatTimeVal(currentTotal / 1000);
+        }
+      });
+    }
+  }, 100);
+
+  // Completed Timers Methods
+  function toggleCompletedDetails(id) {
+    const office = getActiveOffice();
+    const comp = office.completedTimers?.find(t => String(t.id) === String(id));
+    if (comp) {
+      comp.expanded = !comp.expanded;
+      saveState();
+      renderCompletedTimers();
+    }
+  }
+
+  function changeCompletedLapCategory(timerId, lapIdx, newCategory) {
+    const office = getActiveOffice();
+    const comp = office.completedTimers?.find(t => String(t.id) === String(timerId));
+    if (!comp || !comp.recordedLaps[lapIdx]) return;
+
+    const oldCategory = comp.recordedLaps[lapIdx].stepName;
+    const duration = comp.recordedLaps[lapIdx].duration;
+    comp.recordedLaps[lapIdx].stepName = newCategory;
+    comp.steps[lapIdx] = newCategory;
+
+    const obs = office.observations?.find(o => String(o.id) === String(timerId));
+    if (obs) {
+      delete obs.values[oldCategory];
+      obs.values[newCategory] = duration;
+    }
+    saveState();
+    refreshAllPanels();
+  }
+
+  function updateCompletedName(timerId, newName) {
+    const office = getActiveOffice();
+    const comp = office.completedTimers?.find(t => String(t.id) === String(timerId));
+    if (comp) {
+      comp.name = newName;
+      const obs = office.observations?.find(o => String(o.id) === String(timerId));
+      if (obs) obs.name = newName;
+      saveState();
+      renderCTMTable();
+    }
+  }
+
+  function addStepToCompleted(timerId) {
+    const office = getActiveOffice();
+    const comp = office.completedTimers?.find(t => String(t.id) === String(timerId));
+    if (comp) {
+      const firstCat = office.globalCategories[0] || "Step";
+      comp.steps.push(firstCat);
+      comp.recordedLaps.push({ stepName: firstCat, duration: 0, timeOfDay: getFormattedTimeOfDay() });
+
+      const obs = office.observations?.find(o => String(o.id) === String(timerId));
+      if (obs) obs.values[firstCat] = 0;
+      saveState();
+      refreshAllPanels();
+    }
+  }
+
+  function removeCompletedStep(timerId, lapIdx) {
+    const office = getActiveOffice();
+    const comp = office.completedTimers?.find(t => String(t.id) === String(timerId));
+    if (comp && comp.recordedLaps.length > 1) {
+      const removedLap = comp.recordedLaps.splice(lapIdx, 1)[0];
+      comp.steps.splice(lapIdx, 1);
+      comp.elapsed = comp.recordedLaps.reduce((acc, l) => acc + (l.duration || 0), 0) * 1000;
+
+      const obs = office.observations?.find(o => String(o.id) === String(timerId));
+      if (obs && removedLap) {
+        delete obs.values[removedLap.stepName];
+      }
+      saveState();
+      refreshAllPanels();
+    }
+  }
+
+  function reopenCompletedTimer(id) {
+    const office = getActiveOffice();
+    const comp = office.completedTimers?.find(t => String(t.id) === String(id));
+    if (!comp) return;
+
+    if (!office.timers) office.timers = [];
+    office.timers.push({
+      id: comp.id,
+      name: comp.name,
+      user: comp.user || appState.activeUser,
+      date: comp.date || office.date,
+      startTimeStr: comp.startTimeStr,
+      endTimeStr: null,
+      running: false,
+      startTime: 0,
+      elapsed: comp.elapsed,
+      stepIndex: comp.recordedLaps.length,
+      lastLapTimestamp: 0,
+      expanded: true,
+      steps: [...comp.steps],
+      recordedLaps: [...comp.recordedLaps],
+      notes: comp.notes || '',
+      notesExpanded: false,
+      txType: comp.txType || TRANSACTION_TYPES[0],
+      qualifiers: [...(comp.qualifiers || [])],
+      cardWidth: null,
+      cardHeight: null
+    });
+
+    office.completedTimers = office.completedTimers.filter(t => String(t.id) !== String(id));
+    saveState();
+    refreshAllPanels();
+  }
+
+  function deleteCompletedTimer(id) {
+    const office = getActiveOffice();
+    showConfirm("Delete this completed timer and observation record?", () => {
+      if (office.completedTimers) office.completedTimers = office.completedTimers.filter(t => String(t.id) !== String(id));
+      if (office.observations) office.observations = office.observations.filter(o => String(o.id) !== String(id));
+      saveState();
+      refreshAllPanels();
+    });
+  }
+
+  // Drag & Drop Laps
+  function handleLapDragStart(e, timerId, idx, isCompleted = false) {
+    e.stopPropagation();
+    dragSrcType = isCompleted ? 'COMPLETED_LAP' : 'ACTIVE_LAP';
+    dragSrcTimerId = String(timerId);
+    dragSrcStepIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.closest('.lap-box').classList.add('dragging');
+  }
+
+  function handleLapDragOver(e) {
+    if (dragSrcType !== 'ACTIVE_LAP' && dragSrcType !== 'COMPLETED_LAP') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = e.target.closest('.lap-box');
+    if (box) box.classList.add('drag-over');
+  }
+
+  function handleLapDragLeave(e) {
+    const box = e.target.closest('.lap-box');
+    if (box) box.classList.remove('drag-over');
+  }
+
+  function handleLapDrop(e, targetTimerId, targetStepIdx, isCompleted = false) {
+    if (dragSrcTimerId !== String(targetTimerId)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const box = e.target.closest('.lap-box');
+    if (box) box.classList.remove('drag-over');
+
+    const office = getActiveOffice();
+    const list = isCompleted ? office.completedTimers : office.timers;
+    if (!list) return;
+    const timer = list.find(t => String(t.id) === String(targetTimerId));
+
+    if (timer && dragSrcStepIdx !== null && dragSrcStepIdx !== targetStepIdx) {
+      const movedStep = timer.steps.splice(dragSrcStepIdx, 1)[0];
+      timer.steps.splice(targetStepIdx, 0, movedStep);
+
+      if (timer.recordedLaps[dragSrcStepIdx]) {
+        const movedLap = timer.recordedLaps.splice(dragSrcStepIdx, 1)[0];
+        timer.recordedLaps.splice(targetStepIdx, 0, movedLap);
+      }
+
+      saveState();
+      if (isCompleted) {
+        renderCompletedTimers();
+      } else {
+        renderTimers();
+      }
+    }
+  }
+
+  function handleDragEnd() {
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragSrcType = null;
+    dragSrcTimerId = null;
+    dragSrcStepIdx = null;
+  }
+
+  // Render Active Timers
+  function renderTimers() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      document.getElementById('timersContainer').innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px 0;">Timers disabled in Comparison Mode. Select an office tab to time.</div>`;
+      return;
+    }
+    const office = getActiveOffice();
+    const container = document.getElementById('timersContainer');
+    const targetDate = office.date || new Date().toISOString().slice(0, 10);
+    const activeTimers = (office.timers || []).filter(t => (t.date || targetDate) === targetDate);
+
+    if (activeTimers.length === 0) {
+      container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px 0;">No active timers for ${targetDate}. Tap "+ Add" to begin gathering data.</div>`;
+      return;
+    }
+
+    container.innerHTML = activeTimers.map(timer => {
+      const activeStepName = timer.steps[timer.stepIndex] || "Finished";
+      const totalLapSeconds = timer.recordedLaps.reduce((acc, l) => acc + (l.duration || 0), 0);
+      
+      const finalStepName = office.globalCategories[office.globalCategories.length - 1] || "Exit Station";
+      const isLastStep = (activeStepName === finalStepName) || (timer.stepIndex >= office.globalCategories.length - 1);
+
+      const categoryOptions = (selected) => office.globalCategories.map(c => 
+        `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`
+      ).join('');
+
+      const recordedDurations = timer.recordedLaps.map(l => l.duration).filter(d => d != null);
+      const minLapDur = recordedDurations.length > 1 ? Math.min(...recordedDurations) : null;
+      const maxLapDur = recordedDurations.length > 1 ? Math.max(...recordedDurations) : null;
+
+      const stepsListHtml = timer.steps.map((step, sIdx) => {
+        const recorded = timer.recordedLaps[sIdx];
+        const isCurrent = sIdx === timer.stepIndex;
+        let lapTagClass = '';
+        if (recorded && minLapDur !== null) {
+          if (recorded.duration === minLapDur) lapTagClass = 'lap-fastest';
+          else if (recorded.duration === maxLapDur) lapTagClass = 'lap-slowest';
+        }
+        return `
+          <div class="lap-box"
+                draggable="true"
+                ondragstart="handleLapDragStart(event, '${timer.id}', ${sIdx}, false)"
+                ondragover="handleLapDragOver(event)"
+                ondragleave="handleLapDragLeave(event)"
+                ondrop="handleLapDrop(event, '${timer.id}', ${sIdx}, false)"
+                ondragend="handleDragEnd()"
+                style="${isCurrent ? 'border-left: 2px solid var(--accent-blue);' : ''}">
+            <div class="lap-box-top">
+              <span class="drag-handle" title="Drag to reorder lap">⠿</span>
+              <span style="color:var(--text-muted); font-size:0.72rem;">${sIdx + 1}.</span>
+              <select onchange="changeTimerStep('${timer.id}', ${sIdx}, this.value)">
+                ${categoryOptions(step)}
+              </select>
+              <div class="lap-box-metrics">
+                <span class="lap-time-tag ${lapTagClass}">${recorded ? formatTimeVal(recorded.duration) : (isCurrent ? 'Timing...' : '--')}</span>
+                ${recorded && recorded.timeOfDay ? `<span class="lap-tod-tag">🕒 ${recorded.timeOfDay}</span>` : ''}
+              </div>
+              <button onclick="removeStepFromTimer('${timer.id}', ${sIdx})" style="background:none; border:none; color:var(--accent-red); cursor:pointer; margin-left:4px;">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const lastLapStopsOn = !!(appState.settings && appState.settings.lastLapStops);
+      const tapToLapOn = !!(appState.settings && appState.settings.tapToLap);
+      const lapIsStopAlias = isLastStep && lastLapStopsOn;
+
+      const cardSizeStyle = `width:${timer.cardWidth || 280}px;${timer.cardHeight ? ` height:${timer.cardHeight}px; overflow-y:auto;` : ''}`;
+
+      return `
+        <div class="timer-card" data-timer-id="${timer.id}" style="${cardSizeStyle}"
+             ondragover="handleTimerCardDragOver(event, '${timer.id}')"
+             ondragleave="handleTimerCardDragLeave(event)"
+             ondrop="handleTimerCardDrop(event, '${timer.id}')">
+          <div class="timer-row-top">
+            <span class="drag-handle" draggable="true" ondragstart="handleTimerCardDragStart(event, '${timer.id}')" ondragend="handleDragEnd()" title="Drag to reorder timer">⠿</span>
+            <input class="timer-name-input" value="${timer.name}" oninput="updateTimerName('${timer.id}', this.value)" />
+            <button class="timer-notes-btn ${timer.notes ? 'has-notes' : ''}" onclick="toggleTimerNotes('${timer.id}')" title="Notes">📝</button>
+            <button class="timer-x-btn" onclick="removeTimer('${timer.id}')" title="Delete timer">✕</button>
+          </div>
+          ${timer.notesExpanded ? `
+            <textarea class="timer-notes-input" placeholder="Add notes about this subject/timer..." oninput="updateTimerNotes('${timer.id}', this.value)">${timer.notes || ''}</textarea>
+          ` : ''}
+
+          <div class="timer-row-main">
+            <div class="timer-icon-cluster">
+              <button class="timer-icon-btn ${timer.running ? 'pause' : 'play'}" onclick="toggleTimer('${timer.id}')" title="${timer.running ? 'Pause' : 'Start'}">
+                ${timer.running
+                  ? `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="2.5" width="3.2" height="11" rx="0.8"/><rect x="9.3" y="2.5" width="3.2" height="11" rx="0.8"/></svg>`
+                  : `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l10-5.5z"/></svg>`}
+              </button>
+              <button class="timer-icon-btn lap ${lapIsStopAlias ? 'is-stop-alias' : ''}" onclick="handleLapButtonClick('${timer.id}')" ${!timer.running ? 'disabled' : ''} title="${lapIsStopAlias ? 'Stop & Save (final step)' : 'Lap'}">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 1.5v13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3 2.2h7.4l-1.7 2 1.7 2H3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"/></svg>
+              </button>
+              <button class="timer-icon-btn stop" onclick="stopTimer('${timer.id}')" title="Stop &amp; Save">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg>
+              </button>
+            </div>
+            <div class="timer-display-plain ${tapToLapOn ? 'tappable' : ''}" id="display-${timer.id}" onclick="handleStopwatchTap('${timer.id}')" title="${tapToLapOn ? 'Tap to record a lap' : ''}">${formatDuration(timer.elapsed)}</div>
+          </div>
+
+          <div class="timer-subtitle-row">
+            <span>🕒 ${timer.startTimeStr || 'Not started'} · <span id="total-pill-${timer.id}">${formatTimeVal(timer.elapsed / 1000)}</span></span>
+          </div>
+          <div class="timer-subtitle-row">
+            <span>Target:</span>
+            <select class="timer-target-inline-select" onchange="changeTimerStep('${timer.id}', ${timer.stepIndex}, this.value)">
+              ${categoryOptions(activeStepName)}
+            </select>
+          </div>
+          <div class="timer-qualifiers-row">
+            ${TRANSACTION_TYPES.map(t => `
+              <label class="qualifier-chip">
+                <input type="checkbox" ${(timer.txType || TRANSACTION_TYPES[0]) === t ? 'checked' : ''} onchange="updateTimerTxType('${timer.id}', '${t}', this.checked)" />
+                <span>${t}</span>
+              </label>
+            `).join('')}
+          </div>
+          <div class="timer-qualifiers-row">
+            ${QUALIFIERS.map(q => `
+              <label class="qualifier-chip">
+                <input type="checkbox" ${((timer.qualifiers || []).includes(q)) ? 'checked' : ''} onchange="updateTimerQualifier('${timer.id}', '${q}', this.checked)" />
+                <span>${q}</span>
+              </label>
+            `).join('')}
+          </div>
+
+          <button class="details-toggle" onclick="toggleTimerDetails('${timer.id}')">
+            <span>Laps: ${timer.recordedLaps.length}</span>
+            <span>${timer.expanded ? '▲' : '▼'}</span>
+          </button>
+
+          ${timer.expanded ? `
+            <div class="lap-list-drawer">
+              ${stepsListHtml}
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:3px 6px; background:var(--bg-desktop); border-radius:4px; font-size:0.72rem; font-weight:bold;">
+                <span style="color:var(--text-muted);">Recorded Total:</span>
+                <span style="color:var(--accent-blue);">${formatTimeVal(totalLapSeconds)}</span>
+              </div>
+              <button class="btn btn-sm" style="margin-top:4px;" onclick="addStepToTimer('${timer.id}')">+ Insert Step</button>
+            </div>
+          ` : ''}
+          <div class="resize-handle" onpointerdown="startTimerCardResize(event, '${timer.id}')" title="Resize">◢</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Render Completed Timers
+  function renderCompletedTimers() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      document.getElementById('completedTimersContainer').innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px 0;">Comparison Mode active.</div>`;
+      return;
+    }
+    const office = getActiveOffice();
+    const container = document.getElementById('completedTimersContainer');
+    const targetDate = office.date || new Date().toISOString().slice(0, 10);
+    const completedTimers = (office.completedTimers || []).filter(t => (t.date || targetDate) === targetDate);
+
+    if (completedTimers.length === 0) {
+      container.innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px 0;">No completed timers for ${targetDate}.</div>`;
+      return;
+    }
+
+    container.innerHTML = completedTimers.map(comp => {
+      const totalSeconds = comp.recordedLaps.reduce((acc, l) => acc + (l.duration || 0), 0);
+
+      const categoryOptions = (selected) => office.globalCategories.map(c => 
+        `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`
+      ).join('');
+
+      const stepsListHtml = comp.recordedLaps.map((lap, lIdx) => `
+        <div class="lap-box"
+             draggable="true"
+             ondragstart="handleLapDragStart(event, '${comp.id}', ${lIdx}, true)"
+             ondragover="handleLapDragOver(event)"
+             ondragleave="handleLapDragLeave(event)"
+             ondrop="handleLapDrop(event, '${comp.id}', ${lIdx}, true)"
+             ondragend="handleDragEnd()">
+          <div class="lap-box-top">
+            <span class="drag-handle" title="Drag to reorder lap">⠿</span>
+            <span style="color:var(--text-muted); font-size:0.72rem;">${lIdx + 1}.</span>
+            <select onchange="changeCompletedLapCategory('${comp.id}', ${lIdx}, this.value)">
+              ${categoryOptions(lap.stepName)}
+            </select>
+            <div class="lap-box-metrics">
+              <span class="lap-time-tag">${formatTimeVal(lap.duration)}</span>
+              ${lap.timeOfDay ? `<span class="lap-tod-tag">🕒 ${lap.timeOfDay}</span>` : ''}
+            </div>
+            <button onclick="removeCompletedStep('${comp.id}', ${lIdx})" style="background:none; border:none; color:var(--accent-red); cursor:pointer; margin-left:4px;">✕</button>
+          </div>
+        </div>
+      `).join('');
+
+      return `
+        <div class="timer-card" style="border-left: 3px solid #10b981;">
+          <div class="timer-card-top-section">
+            <div class="timer-name-row">
+              <input class="timer-name-input" value="${comp.name}" oninput="updateCompletedName('${comp.id}', this.value)" />
+            </div>
+            <div class="timer-total-badge" style="color:#10b981;">
+              Final: ${formatTimeVal(totalSeconds)}
+            </div>
+            <button class="timer-close-btn" onclick="deleteCompletedTimer('${comp.id}')">✕</button>
+          </div>
+
+          <div class="realtime-range-badge">
+            <span>📅 ${comp.date || office.date} | 🕒 ${comp.startTimeStr || '--'} → ${comp.endTimeStr || '--'}</span>
+          </div>
+          ${comp.txType ? `<div style="font-size:0.72rem; color:var(--text-muted); background:var(--bg-desktop); border-radius:6px; padding:6px 8px; line-height:1.35;">🏷️ ${comp.txType}${(comp.qualifiers && comp.qualifiers.length) ? ' · ' + comp.qualifiers.join(', ') : ''}</div>` : ''}
+          ${comp.notes ? `<div style="font-size:0.72rem; color:var(--text-muted); background:var(--bg-desktop); border-radius:6px; padding:6px 8px; line-height:1.35;">📝 ${comp.notes}</div>` : ''}
+
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="reopenCompletedTimer('${comp.id}')">↩ Reopen Timer</button>
+            <button class="btn btn-sm" onclick="toggleCompletedDetails('${comp.id}')">
+              ${comp.expanded ? '▲ Hide Laps' : '▼ Edit Laps (' + comp.recordedLaps.length + ')'}
+            </button>
+          </div>
+
+          ${comp.expanded ? `
+            <div class="lap-list-drawer">
+              ${stepsListHtml}
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:3px 6px; background:var(--bg-desktop); border-radius:4px; font-size:0.72rem; font-weight:bold;">
+                <span style="color:var(--text-muted);">Adjusted Total:</span>
+                <span style="color:#10b981;">${formatTimeVal(totalSeconds)}</span>
+              </div>
+              <button class="btn btn-sm" style="margin-top:4px;" onclick="addStepToCompleted('${comp.id}')">+ Add Step</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  // --- Filtering Helper for Single Office vs Multi-Office Comparison Mode ---
+  function getFilteredObservations() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      const compareOffice = appState.offices['GARLAND_COMPARE_MODE'];
+      const compareOfficeList = compareOffice?.compareOfficeSelections || [];
+      const dateRanges = compareOffice?.compareOfficeDateRanges || {};
+      let aggregatedObs = [];
+      compareOfficeList.forEach(oName => {
+        const off = appState.offices[oName];
+        if (off && off.observations) {
+          const range = dateRanges[oName];
+          off.observations.forEach(obs => {
+            const obsDate = obs.date || off.date;
+            if (range) {
+              if (range.start && obsDate < range.start) return;
+              if (range.end && obsDate > range.end) return;
+            }
+            aggregatedObs.push({
+              ...obs,
+              name: `[${oName}] ${obs.name}`
+            });
+          });
+        }
+      });
+      return aggregatedObs;
+    } else {
+      const office = getActiveOffice();
+      const targetDate = office.date || new Date().toISOString().slice(0, 10);
+      return (office.observations || []).filter(obs => {
+        const obsDate = obs.date || targetDate;
+        return obsDate === targetDate;
+      });
+    }
+  }
+
+  function getActiveWorkflowCategories() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      return [...DEFAULT_CATEGORIES];
+    }
+    return getActiveOffice().globalCategories;
+  }
+
+  // CTM Table
+  function renderCTMTable() {
+    const isCompare = (appState.activeOfficeId === 'GARLAND_COMPARE_MODE');
+    const office = getActiveOffice();
+    const thead = document.getElementById('ctmTableHead');
+    const tbody = document.getElementById('ctmTableBody');
+    const tfoot = document.getElementById('ctmTableFoot');
+
+    const categories = getActiveWorkflowCategories();
+    const filteredObs = getFilteredObservations();
+    const targetDate = office.date || new Date().toISOString().slice(0, 10);
+
+    if (!isCompare && filteredObs.length === 0) {
+      thead.innerHTML = `<tr><th>Workflow Steps/Laps</th><th>No Observations for ${targetDate}</th></tr>`;
+      tbody.innerHTML = `<tr><td colspan="2" style="color:var(--text-muted); text-align:center; padding:30px;">No data recorded for this date. Start a timer or use test data to populate rows.</td></tr>`;
+      tfoot.innerHTML = ``;
+      return;
+    }
+
+    const obsTotals = {};
+    filteredObs.forEach(obs => {
+      obsTotals[obs.id] = categories.reduce((sum, cat) => sum + (obs.values[cat] || 0), 0);
+    });
+
+    let headHtml = `<tr><th>Workflow Steps/Laps</th>`;
+    filteredObs.forEach(obs => {
+      const timeTag = (obs.startTimeStr && obs.endTimeStr) 
+        ? `<div class="obs-time-range-tag">🕒 ${obs.startTimeStr} → ${obs.endTimeStr}</div>` 
+        : '';
+      headHtml += `
+        <th style="min-width: 140px;">
+          <div class="obs-header-box">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              ${isCompare ? `<span style="font-weight:bold; color:var(--accent-blue); font-size:0.8rem;">${obs.name}</span>` : `<input type="text" value="${obs.name}" oninput="updateObsName('${obs.id}', this.value)" />`}
+              ${isCompare ? '' : `<button onclick="deleteObs('${obs.id}')" style="background:none; border:none; color:var(--accent-red); cursor:pointer; margin-left:4px;">✕</button>`}
+            </div>
+            ${timeTag}
+          </div>
+        </th>
+      `;
+    });
+    headHtml += `<th>Step Average</th></tr>`;
+    thead.innerHTML = headHtml;
+
+    let bodyHtml = '';
+    let grandStepAverageSum = 0;
+
+    categories.forEach(cat => {
+      bodyHtml += `<tr><td><strong>${cat}</strong></td>`;
+      let total = 0;
+      let count = 0;
+
+      filteredObs.forEach(obs => {
+        const val = obs.values[cat] !== undefined ? obs.values[cat] : '';
+        if (typeof val === 'number' && val > 0) {
+          total += val;
+          count++;
+        }
+        
+        const minDisplay = (typeof val === 'number' && val > 0 && appState.unitMode !== 'seconds')
+          ? `<span class="min-hint">(${(val/60).toFixed(2)}m)</span>` : '';
+
+        bodyHtml += `
+          <td>
+            <div class="obs-cell-input-group">
+              ${isCompare ? `<span style="font-family:monospace; color:#10b981; font-weight:bold;">${formatTimeVal(val)}</span>` : `<input type="number" step="0.1" value="${val}" onchange="updateObsVal('${obs.id}', '${cat}', this.value)" />`}
+              ${minDisplay}
+            </div>
+          </td>
+        `;
+      });
+
+      const avgSec = count > 0 ? (total / count) : 0;
+      grandStepAverageSum += avgSec;
+      bodyHtml += `<td style="font-weight:bold; color:var(--accent-blue); white-space:nowrap;">${formatTimeVal(avgSec)}</td></tr>`;
+    });
+
+    tbody.innerHTML = bodyHtml;
+
+    let footHtml = `<tr><td style="color:var(--accent-blue);">TOTAL CYCLE TIME</td>`;
+    filteredObs.forEach(obs => {
+      footHtml += `<td style="color:var(--accent-blue); font-weight:bold; white-space:nowrap;">${formatTimeVal(obsTotals[obs.id])}</td>`;
+    });
+    footHtml += `<td style="color:var(--accent-blue); font-weight:bold; white-space:nowrap;">${formatTimeVal(grandStepAverageSum)}</td></tr>`;
+    tfoot.innerHTML = footHtml;
+  }
+
+  function updateObsName(obsId, val) {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
+    const office = getActiveOffice();
+    const obs = office.observations?.find(o => String(o.id) === String(obsId));
+    if (obs) {
+      obs.name = val;
+      const comp = office.completedTimers?.find(c => String(c.id) === String(obsId));
+      if (comp) comp.name = val;
+      saveState();
+      renderCompletedTimers();
+    }
+  }
+
+  function updateObsVal(obsId, cat, val) {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
+    const office = getActiveOffice();
+    const obs = office.observations?.find(o => String(o.id) === String(obsId));
+    if (obs) {
+      const numVal = parseFloat(val) || 0;
+      obs.values[cat] = numVal;
+
+      const comp = office.completedTimers?.find(c => String(c.id) === String(obsId));
+      if (comp) {
+        const lap = comp.recordedLaps.find(l => l.stepName === cat);
+        if (lap) lap.duration = numVal;
+        comp.elapsed = comp.recordedLaps.reduce((acc, l) => acc + (l.duration || 0), 0) * 1000;
+        renderCompletedTimers();
+      }
+
+      saveState();
+      renderWBC();
+    }
+  }
+
+  function deleteObs(obsId) {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
+    const office = getActiveOffice();
+    showConfirm("Delete this observation from the data table?", () => {
+      if (office.observations) office.observations = office.observations.filter(o => String(o.id) !== String(obsId));
+      if (office.completedTimers) office.completedTimers = office.completedTimers.filter(c => String(c.id) !== String(obsId));
+      saveState();
+      refreshAllPanels();
+    });
+  }
+
+  function resetActiveOfficeData() {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
+    const office = getActiveOffice();
+    const targetDate = office.date || new Date().toISOString().slice(0, 10);
+
+    showConfirm(`Reset all data for date ${targetDate} in "${appState.activeOfficeId}"?`, () => {
+      if (office.observations) {
+        office.observations = office.observations.filter(o => (o.date || targetDate) !== targetDate);
+      }
+      if (office.completedTimers) {
+        office.completedTimers = office.completedTimers.filter(t => (t.date || targetDate) !== targetDate);
+      }
+      if (office.timers) {
+        office.timers = office.timers.filter(t => (t.date || targetDate) !== targetDate);
+      }
+
+      saveState();
+      refreshAllPanels();
+    });
+  }
+
+  // WBC Graph with Filtering Support
+  function renderWBC() {
+    const isCompare = (appState.activeOfficeId === 'GARLAND_COMPARE_MODE');
+    const gridContainer = document.getElementById('wbcGrid');
+    const chart = document.getElementById('wbcChart');
+    const metricsBody = document.getElementById('wbcMetricsBody');
+    const metricsFoot = document.getElementById('wbcMetricsFoot');
+
+    const categories = getActiveWorkflowCategories();
+    const txTypeFilterEl = document.getElementById('wbcTxTypeFilter');
+    const txTypeFilter = txTypeFilterEl ? txTypeFilterEl.value : 'ALL';
+    const qualifierFilter = Array.from(document.querySelectorAll('.wbcQualifierCheckbox:checked')).map(el => el.value);
+
+    let filteredObs = getFilteredObservations();
+    if (txTypeFilter !== 'ALL') {
+      filteredObs = filteredObs.filter(obs => (obs.txType || TRANSACTION_TYPES[0]) === txTypeFilter);
+    }
+    if (qualifierFilter.length > 0) {
+      filteredObs = filteredObs.filter(obs => qualifierFilter.every(q => (obs.qualifiers || []).includes(q)));
+    }
+    let totalMinSum = 0;
+    let totalAvgSum = 0;
+    let totalMaxSum = 0;
+
+    const catStats = categories.map(cat => {
+      let sum = 0;
+      let count = 0;
+      let min = Infinity;
+      let max = -Infinity;
+
+      filteredObs.forEach(obs => {
+        const v = obs.values[cat];
+        if (typeof v === 'number' && v > 0) {
+          sum += v;
+          count++;
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      });
+
+      const avg = count > 0 ? sum / count : 0;
+      const validMin = count > 0 ? min : 0;
+      const validMax = count > 0 ? max : 0;
+
+      totalMinSum += validMin;
+      totalAvgSum += avg;
+      totalMaxSum += validMax;
+
+      return {
+        category: cat,
+        count,
+        min: parseFloat(validMin.toFixed(1)),
+        avg: parseFloat(avg.toFixed(1)),
+        max: parseFloat(validMax.toFixed(1))
+      };
+    });
+
+    const highestObservedMax = Math.max(...catStats.map(s => s.max), 0);
+    let targetCeil = highestObservedMax > 0 ? highestObservedMax * 1.15 : 60;
+
+    let stepSize = 10;
+    if (targetCeil <= 30) stepSize = 5;
+    else if (targetCeil <= 60) stepSize = 10;
+    else if (targetCeil <= 120) stepSize = 20;
+    else if (targetCeil <= 300) stepSize = 30;
+    else if (targetCeil <= 600) stepSize = 60;
+    else if (targetCeil <= 1800) stepSize = 120;
+    else stepSize = 300;
+
+    const yMax = Math.ceil(targetCeil / stepSize) * stepSize;
+
+    let gridHtml = '';
+    for (let val = 0; val <= yMax; val += stepSize) {
+      const bottomPercent = (val / yMax) * 100;
+      gridHtml += `
+        <div class="wbc-grid-line" style="bottom: ${bottomPercent}%;">
+          <span class="wbc-grid-label">${formatTimeVal(val)}</span>
+        </div>
+      `;
+    }
+    gridContainer.innerHTML = gridHtml;
+
+    chart.innerHTML = catStats.map(stat => {
+      if (stat.count === 0 || stat.max === 0) {
+        return `
+          <div class="bar-column">
+            <div class="bar-group"><div class="bar-item" style="height: 4px; width: 100%; background: var(--bg-card-alt);"></div></div>
+            <div class="bar-label">${stat.category}</div>
+          </div>
+        `;
+      }
+
+      const minPct = (stat.min / yMax) * 100;
+      const avgPct = (stat.avg / yMax) * 100;
+      const maxPct = (stat.max / yMax) * 100;
+
+      return `
+        <div class="bar-column">
+          <div class="bar-group">
+            <div class="bar-item min" style="height: ${minPct}%;" title="Min: ${formatTimeVal(stat.min)}">
+              <span class="bar-item-value">${formatTimeVal(stat.min)}</span>
+            </div>
+            <div class="bar-item avg" style="height: ${avgPct}%;" title="Avg: ${formatTimeVal(stat.avg)}">
+              <span class="bar-item-value">${formatTimeVal(stat.avg)}</span>
+            </div>
+            <div class="bar-item max" style="height: ${maxPct}%;" title="Max: ${formatTimeVal(stat.max)}">
+              <span class="bar-item-value">${formatTimeVal(stat.max)}</span>
+            </div>
+          </div>
+          <div class="bar-label">${stat.category}</div>
+        </div>
+      `;
+    }).join('');
+
+    metricsBody.innerHTML = catStats.map(stat => {
+      const range = stat.count > 0 ? (stat.max - stat.min) : 0;
+      return `
+        <tr>
+          <td><strong>${stat.category}</strong></td>
+          <td>${stat.count}</td>
+          <td style="color:var(--tier-min); font-weight:bold; white-space:nowrap;">${formatTimeVal(stat.min)}</td>
+          <td style="color:var(--tier-avg); font-weight:bold; white-space:nowrap;">${formatTimeVal(stat.avg)}</td>
+          <td style="color:var(--tier-max); font-weight:bold; white-space:nowrap;">${formatTimeVal(stat.max)}</td>
+          <td style="color:var(--text-muted); white-space:nowrap;">${formatTimeVal(range)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    metricsFoot.innerHTML = `
+      <tr>
+        <td style="color:var(--accent-blue);">TOTAL PROCESS CYCLE</td>
+        <td>${filteredObs.length} Obs</td>
+        <td style="color:var(--tier-min); font-weight:bold; white-space:nowrap;">${formatTimeVal(totalMinSum)}</td>
+        <td style="color:var(--tier-avg); font-weight:bold; white-space:nowrap;">${formatTimeVal(totalAvgSum)}</td>
+        <td style="color:var(--tier-max); font-weight:bold; white-space:nowrap;">${formatTimeVal(totalMaxSum)}</td>
+        <td style="color:var(--text-muted); white-space:nowrap;">${formatTimeVal(totalMaxSum - totalMinSum)}</td>
+      </tr>
+    `;
+  }
+
+  function resetAllOfficesData() {
+    showConfirm("Reset and purge data for ALL Texas DPS offices?", () => {
+      try {
+        localStorage.removeItem('CTM_WBC_APP_DATA_V191');
+      } catch (e) {
+        console.error('Failed to clear app state from localStorage:', e);
+      }
+      initDefaultApp();
+      saveState();
+      renderOfficeTabs();
+      refreshAllPanels();
+    });
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportData() {
+    closeAllFlyouts();
+    const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, `Texas_DPS_CTM_WBC_${new Date().toISOString().slice(0,10)}.json`);
+  }
+
+  // --- CSV / Excel export ---
+  let pendingExportFormat = null;
+
+  function openExportScopeModal(format) {
+    closeAllFlyouts();
+    pendingExportFormat = format;
+    document.getElementById('exportScopeModalTitle').textContent = format === 'csv' ? '📄 Export CSV' : '📊 Export Excel Report';
+    document.getElementById('exportScopeStatus').textContent = '';
+    document.getElementById('exportScopeModal').classList.add('open');
+  }
+
+  function closeExportScopeModal() {
+    document.getElementById('exportScopeModal').classList.remove('open');
+    pendingExportFormat = null;
+  }
+
+  function runExport(scope) {
+    if (pendingExportFormat === 'csv') {
+      buildCsvExport(scope);
+    } else if (pendingExportFormat === 'excel') {
+      document.getElementById('exportScopeStatus').textContent = 'Building workbook…';
+      buildExcelExport(scope).catch(err => {
+        console.error('Excel export failed:', err);
+        document.getElementById('exportScopeStatus').textContent = 'Export failed — see browser console for details.';
+      });
+    }
+  }
+
+  // Pulls every observation in scope into a flat, office-grouped shape
+  // shared by both the CSV and Excel builders.
+  function gatherExportData(scope) {
+    const categories = [];
+    const seenCats = new Set();
+    const rowsByOffice = {};
+    const officeOrder = [];
+
+    function addCategoriesFrom(list) {
+      (list || []).forEach(c => { if (!seenCats.has(c)) { seenCats.add(c); categories.push(c); } });
+    }
+
+    function pushRow(officeName, obs, officeDate) {
+      if (!rowsByOffice[officeName]) { rowsByOffice[officeName] = []; officeOrder.push(officeName); }
+      const total = Object.values(obs.values || {}).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0);
+      rowsByOffice[officeName].push({
+        date: obs.date || officeDate || '',
+        user: obs.user || '',
+        name: obs.name || '',
+        startTimeStr: obs.startTimeStr || '',
+        endTimeStr: obs.endTimeStr || '',
+        values: obs.values || {},
+        total: parseFloat(total.toFixed(2))
+      });
+    }
+
+    if (scope === 'current' && appState.activeOfficeId !== 'GARLAND_COMPARE_MODE') {
+      const office = getActiveOffice();
+      addCategoriesFrom(office.globalCategories);
+      getFilteredObservations().forEach(obs => pushRow(appState.activeOfficeId, obs, office.date));
+    } else {
+      // 'all' scope, or 'current' while sitting in Compare Mode (no single office to scope to)
+      Object.keys(appState.offices).forEach(officeName => {
+        const off = appState.offices[officeName];
+        if (!off) return;
+        addCategoriesFrom(off.globalCategories);
+        (off.observations || []).forEach(obs => pushRow(officeName, obs, off.date));
+      });
+    }
+
+    return { categories, officeOrder, rowsByOffice };
+  }
+
+  function computeCategoryStats(categories, obsRows) {
+    return categories.map(cat => {
+      let sum = 0, count = 0, min = Infinity, max = -Infinity;
+      obsRows.forEach(r => {
+        const v = r.values ? r.values[cat] : undefined;
+        if (typeof v === 'number' && v > 0) {
+          sum += v; count++;
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      });
+      const avg = count > 0 ? sum / count : 0;
+      return {
+        category: cat,
+        count,
+        min: count > 0 ? parseFloat(min.toFixed(1)) : 0,
+        avg: parseFloat(avg.toFixed(1)),
+        max: count > 0 ? parseFloat(max.toFixed(1)) : 0
+      };
+    });
+  }
+
+  function csvEscape(val) {
+    const s = (val === null || val === undefined) ? '' : String(val);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function buildCsvExport(scope) {
+    const data = gatherExportData(scope);
+    const header = ['Office', 'Date', 'Auditor', 'Subject', 'Start Time', 'End Time', ...data.categories, 'Total (s)'];
+    const lines = [header.map(csvEscape).join(',')];
+
+    data.officeOrder.forEach(officeName => {
+      data.rowsByOffice[officeName].forEach(r => {
+        const row = [
+          officeName, r.date, r.user, r.name, r.startTimeStr, r.endTimeStr,
+          ...data.categories.map(c => (typeof r.values[c] === 'number' ? r.values[c].toFixed(2) : '')),
+          r.total.toFixed(2)
+        ];
+        lines.push(row.map(csvEscape).join(','));
+      });
+    });
+
+    const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    downloadBlob(blob, `Texas_DPS_CTM_WBC_Export_${scope}_${new Date().toISOString().slice(0, 10)}.csv`);
+    closeExportScopeModal();
+  }
+
+  // Renders a Min/Avg/Max grouped bar chart to a PNG data URL for embedding in the Excel report.
+  function renderCategoryStatsChartPNG(catStats, chartTitle) {
+    const W = 720, H = 320;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    const padding = { left: 55, right: 15, top: 40, bottom: 60 };
+    const plotW = W - padding.left - padding.right;
+    const plotH = H - padding.top - padding.bottom;
+
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(chartTitle, padding.left, 22);
+
+    const maxVal = Math.max(1, ...catStats.map(s => s.max));
+    const niceMax = maxVal * 1.15;
+
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, padding.top);
+    ctx.lineTo(padding.left, padding.top + plotH);
+    ctx.lineTo(padding.left + plotW, padding.top + plotH);
+    ctx.stroke();
+
+    ctx.font = '10px Arial';
+    for (let i = 0; i <= 4; i++) {
+      const v = (niceMax / 4) * i;
+      const y = padding.top + plotH - (v / niceMax) * plotH;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(padding.left + plotW, y); ctx.stroke();
+      ctx.fillStyle = '#64748b';
+      ctx.textAlign = 'right';
+      ctx.fillText(v.toFixed(0) + 's', padding.left - 6, y + 3);
+    }
+
+    const n = Math.max(1, catStats.length);
+    const groupW = plotW / n;
+    const barW = Math.min(18, groupW / 4);
+    const colors = { min: '#10b981', avg: '#3b82f6', max: '#ef4444' };
+
+    catStats.forEach((s, i) => {
+      const groupX = padding.left + i * groupW + groupW / 2;
+      ['min', 'avg', 'max'].forEach((k, j) => {
+        const val = s[k];
+        const barH = (val / niceMax) * plotH;
+        const x = groupX - barW * 1.5 + j * barW;
+        const y = padding.top + plotH - barH;
+        ctx.fillStyle = colors[k];
+        ctx.fillRect(x, y, barW - 2, Math.max(0, barH));
+      });
+      ctx.save();
+      ctx.translate(groupX, padding.top + plotH + 12);
+      ctx.rotate(-0.5);
+      ctx.fillStyle = '#334155';
+      ctx.font = '9px Arial';
+      ctx.textAlign = 'right';
+      const label = s.category.length > 14 ? s.category.slice(0, 13) + '…' : s.category;
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    });
+
+    let lx = padding.left;
+    const ly = 18;
+    ctx.font = '10px Arial';
+    [['Min', colors.min], ['Avg', colors.avg], ['Max', colors.max]].forEach(([label, color]) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(lx, ly - 8, 10, 10);
+      ctx.fillStyle = '#334155';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, lx + 14, ly);
+      lx += 55;
+    });
+
+    return canvas.toDataURL('image/png');
+  }
+
+  function excelThinBorder() {
+    const side = { style: 'thin', color: { argb: 'FFCBD5E1' } };
+    return { top: { ...side }, left: { ...side }, bottom: { ...side }, right: { ...side } };
+  }
+
+  async function buildExcelExport(scope) {
+    if (typeof ExcelJS === 'undefined') {
+      document.getElementById('exportScopeStatus').textContent = 'Still loading the Excel engine — give it a second and try again.';
+      return;
+    }
+
+    const data = gatherExportData(scope);
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'CTM & WBC Timing Platform';
+    wb.created = new Date();
+
+    // ---- Data sheet ----
+    // Built as a native Excel Table (not just styled cells) so it's immediately
+    // usable as a PivotTable source in Excel: select any cell in it, then
+    // Insert → PivotTable, and Excel auto-detects the full range and column names.
+    const dataSheet = wb.addWorksheet('Data');
+    const headerCols = ['Office', 'Date', 'Auditor', 'Subject', 'Start Time', 'End Time', ...data.categories, 'Total (s)'];
+
+    const tableRows = [];
+    data.officeOrder.forEach(officeName => {
+      data.rowsByOffice[officeName].forEach(r => {
+        tableRows.push([
+          officeName, r.date, r.user, r.name, r.startTimeStr, r.endTimeStr,
+          ...data.categories.map(c => (typeof r.values[c] === 'number' ? r.values[c] : null)),
+          r.total
+        ]);
+      });
+    });
+
+    if (tableRows.length === 0) {
+      dataSheet.getCell(1, 1).value = 'No observations recorded for this scope.';
+    } else {
+      dataSheet.addTable({
+        name: 'CTM_Data',
+        ref: 'A1',
+        headerRow: true,
+        totalsRow: false,
+        style: { theme: 'TableStyleMedium9', showRowStripes: true },
+        columns: headerCols.map(h => ({ name: h, filterButton: true })),
+        rows: tableRows
+      });
+
+      headerCols.forEach((h, i) => {
+        const col = dataSheet.getColumn(i + 1);
+        col.width = i === 0 ? 22 : (i < 6 ? 13 : 14);
+        if (i >= 6) col.numFmt = '0.00';
+      });
+      dataSheet.getRow(1).height = 26;
+      dataSheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      dataSheet.views = [{ state: 'frozen', xSplit: 4, ySplit: 1 }];
+    }
+
+    let dataRowCount = tableRows.length;
+
+    // ---- Summary sheet (per office: stats table + chart image) ----
+    const summarySheet = wb.addWorksheet('Summary');
+    summarySheet.getColumn(1).width = 26;
+    [2, 3, 4, 5].forEach(c => { summarySheet.getColumn(c).width = 13; });
+
+    let sRow = 1;
+    if (data.officeOrder.length === 0) {
+      summarySheet.getCell(1, 1).value = 'No observations recorded for this scope.';
+    }
+
+    data.officeOrder.forEach(officeName => {
+      const obsRows = data.rowsByOffice[officeName];
+      const catStats = computeCategoryStats(data.categories, obsRows);
+
+      summarySheet.mergeCells(sRow, 1, sRow, 5);
+      const titleCell = summarySheet.getCell(sRow, 1);
+      titleCell.value = officeName;
+      titleCell.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
+      titleCell.alignment = { vertical: 'middle', indent: 1 };
+      summarySheet.getRow(sRow).height = 22;
+      sRow++;
+
+      const hdr = ['Workflow Step', 'Observations', 'Min (s)', 'Avg (s)', 'Max (s)'];
+      const hdrRow = summarySheet.getRow(sRow);
+      hdr.forEach((h, i) => {
+        const cell = hdrRow.getCell(i + 1);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+        cell.border = excelThinBorder();
+        cell.alignment = { horizontal: 'center' };
+      });
+      sRow++;
+
+      catStats.forEach(s => {
+        const row = summarySheet.getRow(sRow);
+        row.getCell(1).value = s.category;
+        row.getCell(2).value = s.count;
+        row.getCell(3).value = s.min;
+        row.getCell(4).value = s.avg;
+        row.getCell(5).value = s.max;
+        row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+        row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCEAFE' } };
+        row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+        row.eachCell(cell => { cell.border = excelThinBorder(); });
+        sRow++;
+      });
+
+      sRow++;
+
+      const pngDataUrl = renderCategoryStatsChartPNG(catStats, officeName + ' — Min / Avg / Max by Step');
+      const imgId = wb.addImage({ base64: pngDataUrl, extension: 'png' });
+      summarySheet.addImage(imgId, { tl: { col: 0, row: sRow - 1 }, ext: { width: 620, height: 275 } });
+      sRow += 15;
+      sRow += 2;
+    });
+
+    document.getElementById('exportScopeStatus').textContent = 'Generating file…';
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    downloadBlob(blob, `Texas_DPS_CTM_WBC_Report_${scope}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    closeExportScopeModal();
+  }
+
+  function importData(e) {
+    closeAllFlyouts();
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        appState = JSON.parse(event.target.result);
+        if (!appState.unitMode) appState.unitMode = 'both';
+        if (!appState.deviceMode) appState.deviceMode = detectDefaultDeviceMode();
+        if (!appState.settings) appState.settings = { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null };
+        if (!appState.settings.selectedGhost) appState.settings.selectedGhost = 'Default.png';
+        if (!appState.settings.ghostPosition) appState.settings.ghostPosition = 'bottom-right';
+        saveState();
+        renderOfficeTabs();
+        restoreWindowStates();
+        applyDeviceMode();
+        applyRibbonVisibility();
+        applySettingsUI();
+        refreshAllPanels();
+      } catch (err) {
+        alert("Invalid file format.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function renderGlobalUserSelect() {
+    const sel = document.getElementById('globalUserSelect');
+    if (!sel) return;
+    sel.innerHTML = appState.userList.map(u => `<option value="${u}" ${u === appState.activeUser ? 'selected' : ''}>${u}</option>`).join('');
+  }
+
+  // Initialization
+  loadState();
+  if (!appState.deviceMode) appState.deviceMode = detectDefaultDeviceMode();
+  renderOfficeTabs();
+  restoreWindowStates();
+  applyDeviceMode();
+  applyRibbonVisibility();
+  applySettingsUI();
+  refreshAllPanels();
+</script>
+</body>
+</html>
