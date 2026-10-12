@@ -326,6 +326,33 @@
     font-weight: bold;
     font-size: 1.05rem;
   }
+  .lap-preset-select { max-width: 150px; }
+  .lap-preset-card {
+    background: var(--bg-window-header);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .lap-preset-card.is-active { border-left: 3px solid var(--accent-blue); }
+  .lap-preset-card-top { display: flex; gap: 6px; align-items: center; }
+  .lap-preset-card textarea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    background: var(--bg-desktop);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    padding: 6px 8px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .lap-preset-hint { font-size: 0.72rem; color: var(--text-muted); }
   .modal-list-container {
     max-height: 260px;
     overflow-y: auto;
@@ -1426,6 +1453,7 @@
       <div class="flyout-menu" id="toolsFlyout">
         <div class="menu-action-item" onclick="openManagerModal('offices')">🏢 Manage Offices</div>
         <div class="menu-action-item" onclick="openManagerModal('steps')">📋 Manage Steps/Laps</div>
+        <div class="menu-action-item" onclick="openLapPresetsModal()">🗂️ Manage Lap Presets</div>
         <div class="menu-action-item" onclick="openManagerModal('users')">👤 Manage Users</div>
         <div style="border-top:1px solid var(--bg-card-alt); margin:2px 0;"></div>
         <div class="menu-action-item" onclick="generateTestSampleData()">🧪 Test (10 Obs)</div>
@@ -1521,6 +1549,22 @@
   </div>
 </div>
 
+<!-- Lap Name Presets Modal -->
+<div class="modal-overlay" id="lapPresetsModal" onclick="closeLapPresetsModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span>🗂️ Lap Name Presets</span>
+      <button class="win-btn" onclick="closeLapPresetsModal()">✕</button>
+    </div>
+    <div class="lap-preset-hint">Save lap/step lists as presets, then pick one from the dropdown in the Timers window to use it for every timer in the current office session. Timers that have already started keep their laps.</div>
+    <div style="display:flex; gap:6px;">
+      <input type="text" id="lapPresetNewName" placeholder="New preset name..." style="flex:1;" />
+      <button class="btn btn-primary btn-sm" onclick="createLapPresetFromCurrent()" title="Save the current office's step/lap list as a new preset">Save Current List</button>
+    </div>
+    <div class="modal-list-container" id="lapPresetsList" style="max-height:55vh;"></div>
+  </div>
+</div>
+
 <!-- Custom Confirm Modal — replaces native confirm(), which browsers can silently
      suppress inside embedded/sandboxed iframes (e.g. some site-builder embeds). -->
 <div class="modal-overlay" id="confirmModal" onclick="closeConfirmModal(false)">
@@ -1580,6 +1624,7 @@
           <button class="win-sub-tab active" id="subtab-active" onclick="switchTimersSubTab('active')">Active</button>
           <button class="win-sub-tab" id="subtab-completed" onclick="switchTimersSubTab('completed')">Completed</button>
         </div>
+        <select class="unit-toggle-select lap-preset-select" id="lapPresetSelect" onchange="onLapPresetSelectChange(this)" title="Lap name preset used for this session's timers"></select>
         <button class="btn btn-primary btn-sm" onclick="addTimerCard()" id="timersAddBtn">+ Add</button>
         <button class="win-btn win-maximize-btn" id="max-btn-win-timers" onclick="toggleWindowMaximize('win-timers')" title="Maximize">
           <svg class="icon-max" width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.2" y="2.2" width="9.6" height="9.6" rx="1.2" stroke="currentColor" stroke-width="1.6"/></svg>
@@ -1875,6 +1920,7 @@
     offices: {},
     windowLayouts: {},
     currentLayoutKey: 'dualSplit',
+    lapPresets: null,
     settings: { tapToLap: false, lastLapStops: false, showGhost: false, selectedGhost: 'Default.png', ghostPosition: 'bottom-right', ghostCustomPos: null }
   };
 
@@ -2213,6 +2259,196 @@
     saveState();
     const sel = document.getElementById('globalUserSelect');
     if (sel) sel.value = newVal;
+  }
+
+  // --- Lap Name Presets ---
+  // Presets are shared across offices; each office remembers which one it is using.
+  function withSelected(list, selected) {
+    return (selected && !list.includes(selected)) ? [...list, selected] : list;
+  }
+
+  function getLapPresets() {
+    if (!Array.isArray(appState.lapPresets) || appState.lapPresets.length === 0) {
+      appState.lapPresets = [{ id: 'preset_default', name: 'Default', steps: [...DEFAULT_CATEGORIES] }];
+    }
+    return appState.lapPresets;
+  }
+
+  function findLapPreset(id) {
+    return getLapPresets().find(p => p.id === id);
+  }
+
+  function sameSteps(a, b) {
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  }
+
+  function escapeAttr(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // The preset whose laps this office's step list currently matches, if any.
+  function getMatchingLapPreset(office) {
+    const active = findLapPreset(office.activePresetId);
+    if (active && sameSteps(active.steps, office.globalCategories)) return active;
+    if (office.activePresetId) return null;
+    return getLapPresets().find(p => sameSteps(p.steps, office.globalCategories)) || null;
+  }
+
+  function renderLapPresetSelect() {
+    const sel = document.getElementById('lapPresetSelect');
+    if (!sel) return;
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      sel.style.display = 'none';
+      return;
+    }
+    sel.style.display = '';
+    const office = getActiveOffice();
+    const presets = getLapPresets();
+    const matching = getMatchingLapPreset(office);
+    const active = findLapPreset(office.activePresetId);
+    let html = '';
+    if (!matching) {
+      html += `<option value="" selected>${active ? escapeAttr(active.name) + ' (edited)' : 'Custom list'}</option>`;
+    }
+    html += presets.map(p =>
+      `<option value="${p.id}" ${matching && p.id === matching.id ? 'selected' : ''}>🗂️ ${escapeAttr(p.name)}</option>`
+    ).join('');
+    html += `<option value="__manage__">⚙️ Manage presets…</option>`;
+    sel.innerHTML = html;
+  }
+
+  function onLapPresetSelectChange(sel) {
+    const val = sel.value;
+    if (val === '__manage__') {
+      renderLapPresetSelect();
+      openLapPresetsModal();
+      return;
+    }
+    if (val) applyLapPreset(val);
+  }
+
+  // Makes the preset the office's step list and re-labels every timer in the
+  // session that hasn't started yet. Running/started timers keep their laps.
+  function applyLapPreset(presetId) {
+    if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
+      alert("Please select a specific office tab to apply a lap preset.");
+      return;
+    }
+    const preset = findLapPreset(presetId);
+    if (!preset || preset.steps.length === 0) return;
+    const office = getActiveOffice();
+    office.globalCategories = [...preset.steps];
+    office.activePresetId = preset.id;
+    (office.timers || []).forEach(timer => {
+      const untouched = !timer.running && !timer.elapsed && timer.recordedLaps.length === 0;
+      if (untouched) {
+        timer.steps = [...preset.steps];
+        timer.stepIndex = 0;
+      }
+    });
+    saveState();
+    refreshAllPanels();
+    renderLapPresetsList();
+  }
+
+  function openLapPresetsModal() {
+    closeAllFlyouts();
+    renderLapPresetsList();
+    document.getElementById('lapPresetsModal').classList.add('open');
+  }
+
+  function closeLapPresetsModal() {
+    document.getElementById('lapPresetsModal').classList.remove('open');
+  }
+
+  function renderLapPresetsList() {
+    const container = document.getElementById('lapPresetsList');
+    if (!container) return;
+    const isCompare = appState.activeOfficeId === 'GARLAND_COMPARE_MODE';
+    const matching = isCompare ? null : getMatchingLapPreset(getActiveOffice());
+    const activeId = matching ? matching.id : null;
+    container.innerHTML = getLapPresets().map(p => `
+      <div class="lap-preset-card ${p.id === activeId ? 'is-active' : ''}">
+        <div class="lap-preset-card-top">
+          <input type="text" value="${escapeAttr(p.name)}" onchange="renameLapPreset('${p.id}', this.value)" style="flex:1;" />
+          <span class="lap-preset-hint">${p.steps.length} laps</span>
+          <button class="btn btn-primary btn-sm" onclick="applyLapPreset('${p.id}')" ${isCompare ? 'disabled' : ''} title="Use this preset for all timers in the current office session">${p.id === activeId ? '✓ In Use' : 'Use'}</button>
+          <button class="btn btn-sm" onclick="overwriteLapPresetFromCurrent('${p.id}')" ${isCompare ? 'disabled' : ''} title="Replace this preset's laps with the current office's step/lap list">⤓ Current</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteLapPreset('${p.id}')" title="Delete preset">✕</button>
+        </div>
+        <textarea onchange="updateLapPresetSteps('${p.id}', this.value)" title="One lap name per line">${escapeAttr(p.steps.join('\n'))}</textarea>
+      </div>
+    `).join('');
+  }
+
+  function parsePresetSteps(text) {
+    return text.split('\n').map(s => s.trim()).filter(Boolean);
+  }
+
+  function createLapPresetFromCurrent() {
+    const input = document.getElementById('lapPresetNewName');
+    const name = input.value.trim() || `Preset ${getLapPresets().length + 1}`;
+    const steps = appState.activeOfficeId === 'GARLAND_COMPARE_MODE'
+      ? [...DEFAULT_CATEGORIES]
+      : [...getActiveOffice().globalCategories];
+    const preset = { id: 'preset_' + Date.now() + Math.floor(Math.random() * 1000), name, steps };
+    getLapPresets().push(preset);
+    if (appState.activeOfficeId !== 'GARLAND_COMPARE_MODE') getActiveOffice().activePresetId = preset.id;
+    input.value = '';
+    saveState();
+    renderLapPresetsList();
+    renderLapPresetSelect();
+  }
+
+  function renameLapPreset(id, val) {
+    const preset = findLapPreset(id);
+    const name = val.trim();
+    if (!preset || !name) { renderLapPresetsList(); return; }
+    preset.name = name;
+    saveState();
+    renderLapPresetSelect();
+  }
+
+  function updateLapPresetSteps(id, text) {
+    const preset = findLapPreset(id);
+    if (!preset) return;
+    const steps = parsePresetSteps(text);
+    if (steps.length === 0) {
+      alert("A preset needs at least one lap name.");
+      renderLapPresetsList();
+      return;
+    }
+    preset.steps = steps;
+    saveState();
+    renderLapPresetsList();
+    renderLapPresetSelect();
+  }
+
+  function overwriteLapPresetFromCurrent(id) {
+    const preset = findLapPreset(id);
+    if (!preset || appState.activeOfficeId === 'GARLAND_COMPARE_MODE') return;
+    showConfirm(`Replace the laps in "${preset.name}" with this office's current step/lap list?`, () => {
+      preset.steps = [...getActiveOffice().globalCategories];
+      saveState();
+      renderLapPresetsList();
+      renderLapPresetSelect();
+    });
+  }
+
+  function deleteLapPreset(id) {
+    const presets = getLapPresets();
+    if (presets.length <= 1) {
+      alert("At least one preset is required.");
+      return;
+    }
+    const preset = findLapPreset(id);
+    if (!preset) return;
+    showConfirm(`Delete the lap preset "${preset.name}"? Timers already using its laps are not changed.`, () => {
+      appState.lapPresets = presets.filter(p => p.id !== id);
+      saveState();
+      renderLapPresetsList();
+      renderLapPresetSelect();
+    });
   }
 
   function refreshAllPanels() {
@@ -3334,9 +3570,7 @@
     const timer = office.timers.find(t => String(t.id) === String(id));
     if (!timer || !timer.running) return;
 
-    const finalStepName = office.globalCategories[office.globalCategories.length - 1] || "Exit Station";
-    const activeStepName = timer.steps[timer.stepIndex] || "Finished";
-    const isLastStep = (activeStepName === finalStepName) || (timer.stepIndex >= office.globalCategories.length - 1);
+    const isLastStep = timer.stepIndex >= timer.steps.length - 1;
 
     if (appState.settings && appState.settings.lastLapStops && isLastStep) {
       stopTimer(id);
@@ -3839,6 +4073,7 @@
 
   // Render Active Timers
   function renderTimers() {
+    renderLapPresetSelect();
     if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
       document.getElementById('timersContainer').innerHTML = `<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px 0;">Timers disabled in Comparison Mode. Select an office tab to time.</div>`;
       return;
@@ -3857,10 +4092,9 @@
       const activeStepName = timer.steps[timer.stepIndex] || "Finished";
       const totalLapSeconds = timer.recordedLaps.reduce((acc, l) => acc + (l.duration || 0), 0);
       
-      const finalStepName = office.globalCategories[office.globalCategories.length - 1] || "Exit Station";
-      const isLastStep = (activeStepName === finalStepName) || (timer.stepIndex >= office.globalCategories.length - 1);
+      const isLastStep = timer.stepIndex >= timer.steps.length - 1;
 
-      const categoryOptions = (selected) => office.globalCategories.map(c => 
+      const categoryOptions = (selected) => withSelected(office.globalCategories, selected).map(c => 
         `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`
       ).join('');
 
@@ -4005,7 +4239,7 @@
     container.innerHTML = completedTimers.map(comp => {
       const totalSeconds = comp.recordedLaps.reduce((acc, l) => acc + (l.duration || 0), 0);
 
-      const categoryOptions = (selected) => office.globalCategories.map(c => 
+      const categoryOptions = (selected) => withSelected(office.globalCategories, selected).map(c => 
         `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`
       ).join('');
 
@@ -4111,7 +4345,18 @@
     if (appState.activeOfficeId === 'GARLAND_COMPARE_MODE') {
       return [...DEFAULT_CATEGORIES];
     }
-    return getActiveOffice().globalCategories;
+    return getOfficeCategories(getActiveOffice());
+  }
+
+  // The office's step list, plus any step names its observations recorded that
+  // are no longer in the list (e.g. after switching lap presets).
+  function getOfficeCategories(office) {
+    const cats = [...(office.globalCategories || [])];
+    const seen = new Set(cats);
+    (office.observations || []).forEach(obs => {
+      Object.keys(obs.values || {}).forEach(k => { if (!seen.has(k)) { seen.add(k); cats.push(k); } });
+    });
+    return cats;
   }
 
   // CTM Table
@@ -4493,14 +4738,14 @@
 
     if (scope === 'current' && appState.activeOfficeId !== 'GARLAND_COMPARE_MODE') {
       const office = getActiveOffice();
-      addCategoriesFrom(office.globalCategories);
+      addCategoriesFrom(getOfficeCategories(office));
       getFilteredObservations().forEach(obs => pushRow(appState.activeOfficeId, obs, office.date));
     } else {
       // 'all' scope, or 'current' while sitting in Compare Mode (no single office to scope to)
       Object.keys(appState.offices).forEach(officeName => {
         const off = appState.offices[officeName];
         if (!off) return;
-        addCategoriesFrom(off.globalCategories);
+        addCategoriesFrom(getOfficeCategories(off));
         (off.observations || []).forEach(obs => pushRow(officeName, obs, off.date));
       });
     }
@@ -4810,4 +5055,4 @@
   }
 </script>
 </body>
-</html>
+</html>
